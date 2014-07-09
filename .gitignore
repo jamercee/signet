@@ -1,0 +1,32 @@
+# standard ignore(s)
+*~
+a.out
+*.core
+*.db
+*.dll
+*.dmg
+*.egg
+*.exe
+*.key
+*.log
+*.msi
+*.o
+*.obj
+*.pln
+*.pyc
+*.pyd
+*.run
+*.sig
+*.so
+*.swo
+*.swp
+*.tar.bz2
+*.tar
+*.tbz2
+*.tgz
+*.zip
+
+# ignore python transient
+/build/
+/dist/
+
