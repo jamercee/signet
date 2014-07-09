@@ -1,32 +1,27 @@
 #!/usr/bin/env python2.7
-## \file command.py
-# \brief Create signmet loader
-# \date January 1st, 2014
-# \copyright Copyright(c), 2014, Carroll-Net, Inc.
-# \copyright All Rights Reserved.
-r"""Create sigmet loader
+r""":mod:`build_signet` - Build a custom signet loader
+=============================================================
 
-This process will scan a python module for dependencies, and for each it will
-pre-calculate it's sha1 hash. The hash signatures will then be written into
-a custom python loader, that on startup will check the installed dependencies
-to confirm they match their pre-calculated values.
+.. module:: signet.command.build_signet
+   :synopsis: Create a signet loader for a python script.
+.. moduleauthor:: Jim Carroll <jim@carroll.com>
 
-Basic template (which performs no tamper testing)
+This process will scan a python module for dependencies. Each will have it's
+sha1 hash generated, and written to a custom python loader (written in c/c++),
+compiled to binary.
 
-    struct Signature {
-       const char* hexdigest;
-       const char* mod_name;
-       };
-    /* the following three globals are replaced */
-    const char SCRIPT[] = "";
-    const Signature SIGS[] = {};
-    int TamperProtection = 2;
-    int main() {
-       return 0;
-       }
+Example ``setup.py``:
 
-Copyright(c), 2014, Carroll-Net, Inc.
-All Rights Reserved"""
+.. code-block:: py
+
+    from distutils.core import setup, Extension
+    from signet.command.build_signet import build_signet
+
+    setup(name = 'hello',
+        cmdclass = {'build_signet': build_signet},
+        ext_modules = [Extension('hello', sources=['hello.py'])],
+        )
+"""
 
 # ----------------------------------------------------------------------------
 # Standard library imports
@@ -52,7 +47,9 @@ __status__     = 'Production'
 __copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 def module_signatures(py_source):
-    r"""return list of 2-tuples [(hexdigest, modulename), ...]"""
+    r"""Scan *py_source* for dependencies, and return list of
+        2-tuples [(hexdigest, modulename), ...]
+    """
 
     signatures = []
 
@@ -101,7 +98,16 @@ def module_signatures(py_source):
     return sorted(signatures, key=lambda s: s[1])
 
 def generate_sigs_decl(py_source):
-    r"""create SIGS c++ declaration"""
+    r"""Scan *py_source*, return SIGS c++ declaration as string. The
+    returned string will be formatted:
+
+    .. code-block:: c
+        
+        const Signature SIGS[] = {
+                {"hexdigest1", "module1"},
+                {"hexdigest2", "module2"},
+                };
+    """
 
     sigs_decl = StringIO.StringIO()
     sigs_decl.write('const Signature SIGS[] = {\n')
@@ -113,7 +119,7 @@ def generate_sigs_decl(py_source):
     return sigs_decl.getvalue()
 
 def copy_lib_source(lib_root, tgt_root):
-    r"""copy lib(s) to tgt_root directory"""
+    r"""Recursively copy copy *lib_root* to *tgt_root* directory"""
 
     libs = []
 
@@ -126,7 +132,7 @@ def copy_lib_source(lib_root, tgt_root):
     return libs
 
 class build_signet(_build_ext):
-    r"""build signet loader"""
+    r"""Build signet loader."""
 
     description = "build signet loader"""
     user_options = _build_ext.user_options
@@ -208,7 +214,27 @@ class build_signet(_build_ext):
             self.detection = 2
 
     def generate_loader_source(self, py_source):
-        r"""generate loader source code"""
+        r"""Generate loader source code
+
+        Read from a loader template and write out c/c++ source code, making
+        suitable substitutions.
+
+        A loader template at a minimum must include:
+
+        .. code-block:: c
+
+            struct Signature {
+               const char* hexdigest;
+               const char* mod_name;
+               };
+            /* the following three globals are required */
+            const char SCRIPT[] = "";
+            const Signature SIGS[] = {};
+            int TamperProtection = 2;
+            int main() {
+               ...
+               }
+        """
 
         sig_decls = generate_sigs_decl(py_source)
 
