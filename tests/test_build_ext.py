@@ -25,12 +25,6 @@ import unittest
 import pkg_resources
 
 # ----------------------------------------------------------------------------
-# testing imports
-# ----------------------------------------------------------------------------
-import signet
-import signet.command
-
-# ----------------------------------------------------------------------------
 # Module level initializations
 # ----------------------------------------------------------------------------
 __pychecker__  = 'unusednames=__maintainer__,__status__'
@@ -96,6 +90,7 @@ class TestBuildSignet(unittest.TestCase):
     def test_simple(self):
         r"""simple test of version (to confirm we got right)"""
 
+        import signet
         self.assertGreaterEqual(
             pkg_resources.parse_version(signet.__version__),
             pkg_resources.parse_version("1.0.2"))
@@ -111,9 +106,9 @@ class TestBuildSignet(unittest.TestCase):
         with open(setup_py, 'w') as fout:
             fout.write(
                 "from distutils.core import setup, Extension\n"
-                "import signet.command\n"
+                "from signet.command.build_signet import build_signet\n"
                 "setup(name = 'hello',\n"
-                "    cmdclass = {'build_signet':signet.command.build_signet},\n"
+                "    cmdclass = {'build_signet': build_signet},\n"
                 "    ext_modules = [Extension('hello', \n"
                 "                      sources=['hello.py'])],\n"
                 ")\n"
@@ -150,9 +145,9 @@ class TestBuildSignet(unittest.TestCase):
         with open(setup_py, 'w') as fout:
             fout.write(
                 "from distutils.core import setup, Extension\n"
-                "import signet.command\n"
+                "from signet.command.build_signet import build_signet\n"
                 "setup(name = 'hello',\n"
-                "    cmdclass = {'build_signet':signet.command.build_signet},\n"
+                "    cmdclass = {'build_signet':build_signet},\n"
                 "    ext_modules = [Extension('hello', \n"
                 "                      sources=['hello.py'])],\n"
                 ")\n"
@@ -198,9 +193,9 @@ class TestBuildSignet(unittest.TestCase):
         with open(setup_py, 'w') as fout:
             fout.write(
                 "from distutils.core import setup, Extension\n"
-                "import signet.command\n"
+                "from signet.command.build_signet import build_signet\n"
                 "setup(name = 'hello',\n"
-                "    cmdclass = {'build_signet':signet.command.build_signet},\n"
+                "    cmdclass = {'build_signet':build_signet},\n"
                 "    ext_modules = [Extension('hello', \n"
                 "                      sources=['hello.py'])],\n"
                 ")\n"
@@ -251,9 +246,9 @@ class TestBuildSignet(unittest.TestCase):
         with open(setup_py, 'w') as fout:
             fout.write(
                 "from distutils.core import setup, Extension\n"
-                "import signet.command\n"
+                "from signet.command.build_signet import build_signet\n"
                 "setup(name = 'hello',\n"
-                "    cmdclass = {'build_signet':signet.command.build_signet},\n"
+                "    cmdclass = {'build_signet':build_signet},\n"
                 "    ext_modules = [Extension('hello', \n"
                 "                      sources=['hello.py'])],\n"
                 ")\n"
