@@ -31,3 +31,6 @@ a.out
 /dist/
 /signet.egg-info/
 
+# ignore sphix _build
+/docs/_build/
+
