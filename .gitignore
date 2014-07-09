@@ -29,4 +29,5 @@ a.out
 # ignore python transient
 /build/
 /dist/
+/signet.egg-info/
 
