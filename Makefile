@@ -48,20 +48,24 @@ TGTS += $(patsubst %.py,%.pyc,$(wildcard signet/*.py))
 TGTS += $(patsubst %.py,%.pyc,$(wildcard signet/command/*.py))
 TGTS += $(patsubst %.py,%.pyc,$(wildcard tests/*.py))
 
-.PHONY: comp test build install clean
+.PHONY: comp test build install docs clean
 
 comp: $(TGTS)
 
 test: comp
-	@$(PYTHON) setup.py nosetests -s
+	$(PYTHON) setup.py develop
+	$(PYTHON) setup.py nosetests -s
 
 build: comp
-	@$(PYTHON) setup.py build
+	$(PYTHON) setup.py build
 
 install: comp
-	@$(PYTHON) setup.py install
+	$(PYTHON) setup.py install
+
+docs:
+	sphinx-build -b html . docs
 
 clean:
 	-rm $(TGTS)
-	@$(PYTHON) setup.py clean
+	$(PYTHON) setup.py clean
 

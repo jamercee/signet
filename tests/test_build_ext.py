@@ -113,7 +113,7 @@ class TestBuildSignet(unittest.TestCase):
                 "                      sources=['hello.py'])],\n"
                 ")\n"
                 )
-
+        
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
         if rc or len(stderr):
             self.fail(stdout + "\n" + stderr)
