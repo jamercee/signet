@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+# pylint: disable=C0301
 r""":mod:`build_signet` - Build a custom signet loader
 =============================================================
 
@@ -62,6 +63,7 @@ Example ``setup.py``:
         ext_modules = [Extension('hello', sources=['hello.py'])],
         )
 """
+# pylint: enable=C0301
 
 # ----------------------------------------------------------------------------
 # Standard library imports
@@ -182,8 +184,11 @@ def parse_rc_version(vstring):
     while len(parts) < 4:
         parts.extend('0')
 
-    return '%d,%d,%d,%d' % (parts[0], parts[1], parts[2], parts[3])
+    return ('%d,%d,%d,%d' % 
+            (int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])))
 
+
+# pylint: disable=C0301
 def extract_manifest_details(py_source):
     r"""extract manifest from py_source
    
@@ -193,6 +198,7 @@ def extract_manifest_details(py_source):
     `MSDN <http://msdn.microsoft.com/en-us/library/windows/desktop/aa381049%28v=vs.85%29.aspx>`_ 
     (and __icon__).
     """
+    # pylint: enable=C0301
 
     manifest = {
         'CompanyName': None, 
@@ -322,8 +328,9 @@ class build_signet(_build_ext):
 
         # validate manifest generation
 
-        if self.manifest is None and os.name == 'nt':
-            self.manifest = True
+        if self.manifest and os.name != 'nt':
+            raise DistutilsSetupError("'manifest' is only a valid "
+                    "option on windows")
 
     def generate_loader_source(self, py_source):
         r"""Generate loader source code
