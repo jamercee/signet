@@ -63,7 +63,7 @@ install: comp
 	$(PYTHON) setup.py install
 
 docs:
-	sphinx-build -b html . docs
+	cd docs && $(MAKE) html
 
 clean:
 	-rm $(TGTS)

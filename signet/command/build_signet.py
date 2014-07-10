@@ -6,10 +6,50 @@ r""":mod:`build_signet` - Build a custom signet loader
    :synopsis: Create a signet loader for a python script.
 .. moduleauthor:: Jim Carroll <jim@carroll.com>
 
-This process will scan a python module for dependencies. Each will have it's
-sha1 hash generated, and written to a custom python loader (written in c/c++),
-compiled to binary.
+The :mod:`signet.command.build_signet` module is responsible for building
+and compiling signet loaders. It provides all the facilities you require
+for scanning your module's dependencies, and building your custom signet
+loader.
 
+.. function:: setup(arguments)
+
+   This is the main function responsible for generating your signet loader.
+   It inherits from 
+   `disutils.command.build_ext <https://docs.python.org/2/distutils/apiref.html#module-distutils.core>`_ 
+   and supports all it's parameters.  It adds a few additional arguments of it's own.
+
+   .. tabularcolumns:: |l|L|l
+
+   +----------------+---------------------------------------+-------------------------------+
+   | argument name  | value                                 | type                          |
+   +================+=======================================+===============================+
+   | *template*     | The source to a custom loader         | a string                      |
+   |                | to override the default loader        |                               |
+   |                | provided by signet.                   |                               |
+   +----------------+---------------------------------------+-------------------------------+
+   | *cflags*       | any extra platform- and compiler-     | a list of strings             |
+   |                | specific settings to use when         |                               |
+   |                | **compiling** the custom loader.      |                               |
+   +----------------+---------------------------------------+-------------------------------+
+   | *ldflags*      | any extra platform- and compiler-     | a list of strings             |
+   |                | specific settings to use when         |                               |
+   |                | **linking** the custom loader.        |                               |
+   +----------------+---------------------------------------+-------------------------------+
+   | *detection*    | The default tamper protection used    | an int                        |
+   |                | by your loader. Valid choices are;    |                               |
+   |                | 3 require signed binary, 2 normal     |                               |
+   |                | detection (default), 1 warn only,     |                               |
+   |                | 0 disable detection                   |                               |
+   +----------------+---------------------------------------+-------------------------------+
+   | *ext_modules*  | The list of python modules to build   | a list of instances           |
+   |                | signet loader(s) for. *REQUIRED*      | of *distutils.core.Extension* |
+   |                |                                       | [#f1]_                        |
+   +----------------+---------------------------------------+-------------------------------+
+
+    .. [#f1] `distutils.core.Exception <https://docs.python.org/2/distutils/apiref.html#distutils.core.Extension>`_
+
+
+.. class
 Example ``setup.py``:
 
 .. code-block:: py
@@ -33,6 +73,7 @@ import StringIO
 import modulefinder
 import hashlib
 import os
+import re
 import shutil
 
 # ----------------------------------------------------------------------------
@@ -48,7 +89,7 @@ __copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 def module_signatures(py_source):
     r"""Scan *py_source* for dependencies, and return list of
-        2-tuples [(hexdigest, modulename), ...]
+        2-tuples [(hexdigest, modulename), ...], sorted by modulename.
     """
 
     signatures = []
@@ -118,6 +159,67 @@ def generate_sigs_decl(py_source):
 
     return sigs_decl.getvalue()
 
+def parse_rc_version(vstring):
+    r"""convert version -> rc version
+
+    Microsoft requires versions consists four decimal numbers, comma
+    comma seperated. Missing components are set to zero.
+
+    Eg: "1.2.3" -> "1,2,3,0"
+    """
+    if not re.match(r'((\d+)[\.,]?){0,4}', vstring):
+        raise ValueError('invalid RC version "%s"' % vstring)
+
+    # accept version in dotted or comma'ed format
+
+    parts = vstring.split('.')
+    if not parts:
+        parts = vstring.split(',')
+
+    if len(parts) > 4:
+        raise ValueError('RC version "%s" has too many digits' % vstring)
+
+    while len(parts) < 4:
+        parts.extend('0')
+
+    return '%d,%d,%d,%d' % (parts[0], parts[1], parts[2], parts[3])
+
+def extract_manifest_details(py_source):
+    r"""extract manifest from py_source
+   
+    Each line of py_source is scanned for a manifest value beginning in
+    column 1. The expected pattern is ``__KEY__ = 'value'``, where KEY
+    is one of the valid *string-name* parameters described by 
+    `MSDN <http://msdn.microsoft.com/en-us/library/windows/desktop/aa381049%28v=vs.85%29.aspx>`_ 
+    (and __icon__).
+    """
+
+    manifest = {
+        'CompanyName': None, 
+        'FileDescription': None,
+        'FileVersion': '0.0.0.0',
+        'LegalCopyright': None,
+        'ProductName': None,
+        'ProductVersion': None,
+        'Icon': 'app.ico',
+        }
+
+    with open(py_source) as fin:
+        for line in fin:
+            for key in manifest.keys():
+                ma = re.match(r'(?i)__%s__\s*=\s*(\'")(.+)\1' % key, line)
+                if ma:
+                    manifest[key] = ma.group(2)
+                    break
+
+    manifest['FileVersion'] = parse_rc_version(manifest['FileVersion'])
+    if not manifest['ProductVersion']:
+        manifest['ProductVersion'] = manifest['FileVersion']
+    else:
+        manifest['ProductVersion'] = parse_rc_version(manifest['FileVersion'])
+
+    return manifest
+
 def copy_lib_source(lib_root, tgt_root):
     r"""Recursively copy copy *lib_root* to *tgt_root* directory"""
 
@@ -150,7 +252,11 @@ class build_signet(_build_ext):
         ('detection=', None,
          "tamper detection - 0 disabled, 1 warn, 2 normal, 3 signed-binary "
          "(default 2)"),
+        ('manifest', None,
+         "dynamic generation of windows manifest"),
         ])
+
+    boolean_options.extend(['manifest'])
 
     def __init__(self, dist):
         r"""initialize local variables -- BEFORE calling the
@@ -170,16 +276,17 @@ class build_signet(_build_ext):
         _build_ext.__init__(self, dist)
 
     def initialize_options(self):
-        r"""set default values"""
+        r"""set default option values"""
         _build_ext.initialize_options(self)
 
         self.template = None
         self.cflags = []
         self.ldflags = []
         self.detection = None
+        self.manifest = None
 
     def finalize_options(self):
-        r"""set final values"""
+        r"""finished initializing option values"""
 
         _build_ext.finalize_options(self)
 
@@ -213,27 +320,16 @@ class build_signet(_build_ext):
         if self.detection is None:
             self.detection = 2
 
+        # validate manifest generation
+
+        if self.manifest is None and os.name == 'nt':
+            self.manifest = True
+
     def generate_loader_source(self, py_source):
         r"""Generate loader source code
 
         Read from a loader template and write out c/c++ source code, making
         suitable substitutions.
-
-        A loader template at a minimum must include:
-
-        .. code-block:: c
-
-            struct Signature {
-               const char* hexdigest;
-               const char* mod_name;
-               };
-            /* the following three globals are required */
-            const char SCRIPT[] = "";
-            const Signature SIGS[] = {};
-            int TamperProtection = 2;
-            int main() {
-               ...
-               }
         """
 
         sig_decls = generate_sigs_decl(py_source)
@@ -275,77 +371,148 @@ class build_signet(_build_ext):
 
         return loader_source
 
+    def generate_rcfile(self, py_source, tgt_dir):
+        r"""create windows resource file"""
+
+        try:
+            mnf = extract_manifest_details(py_source)
+        except ValueError, exc:
+            raise DistutilsSetupError("error extracting detailed from %s, %s"
+                    % (py_source, str(exc)))
+
+        md = self.distribution.metadata
+
+        mnf['CompanyName'] = mnf['CompanyName'] or md.maintainer
+        mnf['FileDescription'] = mnf['FileDescription'] or md.description
+        mnf['FileVersion'] = mnf['FileVersion'] or md.version
+        mnf['LegalCopyright'] = mnf['LegalCopyright'] or md.copyright
+        mnf['ProductName'] = mnf['ProductName'] or md.name
+        mnf['ProductVersion'] = mnf['ProductVersion'] or md.version
+
+        for key, val in mnf.items():
+            if not val:
+                raise DistutilsSetupError(
+                    "when 'build_signet' manifest=1, then "
+                    "__%s__ must be set in %s" % (key, py_source))
+
+        base = os.path.basename(py_source)
+        exename = os.path.splitext(base)[0] + '.exe'
+
+        rcfile = os.path.splitext(base)[0] + '.rc'
+        rcfile = os.path.join(tgt_dir, rcfile)
+
+        with open(rcfile, 'w') as fout:
+            fout.write('1  ICON    "%s"\n' % mnf['Icon'])
+            fout.write('1  VERSIONINFO\n')
+            fout.write('FILEVERSION %s\n' % mnf['FileVersion'])
+            fout.write('PRODUCTVERSION %s\n' % mnf['ProductVersion'])
+            fout.write('FILEFLAGSMASK 0x17L\n')
+            fout.write('FILEFLAGS 0x0L\n')
+            fout.write('FILEOS 0x4L\n')
+            fout.write('FILETYPE 0x1L\n')
+            fout.write('FILESUBTYPE 0x0L\n')
+
+            fout.write('BEGIN\n')
+            fout.write('\tBLOCK "StringFileInfo"\n')
+            fout.write('\tBEGIN\n')
+            # U.S. English, Unicode
+            fout.write('\t\tBLOCK "040904b0"\n')
+            fout.write('\t\tBEGIN\n')
+            fout.write('\t\t\tVALUE "Comments", "Created by signet loader"\n')
+            fout.write('\t\t\tVALUE "CompanyName", "%s"\n' 
+                    % mnf['CompanyName'])
+            fout.write('\t\t\tVALUE "FileDescription", "%s"\n'
+                    % mnf['FileDescription'])
+            fout.write('\t\t\tVALUE "FileVersion", "%s"\n'
+                    % mnf['FileVersion'])
+            fout.write('\t\t\tVALUE "InternalName", "%s"\n'
+                    % base)
+            fout.write('\t\t\tVALUE "LegalCopyright", "%s"\n'
+                    % mnf['LegalCopyright'])
+            fout.write('\t\t\tVALUE "OriginalFileName", "%s"\n' 
+                    % exename)
+            fout.write('\t\t\tVALUE "ProductName", "%s"\n'
+                    % mnf['ProductName'])
+            fout.write('\t\t\tVALUE "ProductVersion", "%s"\n'
+                    % mnf['ProductVersion'])
+            fout.write('\t\tEND\n')
+            fout.write('\tEND\n')
+            fout.write('END\n')
+
+        return rcfile
+
     def build_extension(self, ext):
         r"""perform the build action(s)"""
 
-        py_sources = ext.sources
-
-        if py_sources is None or not isinstance(py_sources, (list, tuple)):
+        if ext.sources is None or len(ext.sources) > 1:
             raise DistutilsSetupError(
                 "in 'ext_modules' options (extension '%s'), "
                 "'sources' must be present and must be "
-                "a list of source filenames" % ext.name)
+                "a single source filename" % ext.name)
 
-        for py_source in list(py_sources):
+        py_source = ext.sources[0]
 
-            log.info("building '%s' signet loader", ext.name)
+        log.info("building '%s' signet loader", ext.name)
 
-            # Copy libary files from signet pakage to our intended
-            # target directory
+        # Copy libary files from signet pakage to our intended
+        # target directory
 
-            tgt_dir = os.path.dirname(os.path.abspath(py_source))
-            lib_sources = copy_lib_source(self.lib_root, tgt_dir)
+        tgt_dir = os.path.dirname(os.path.abspath(py_source))
+        lib_sources = copy_lib_source(self.lib_root, tgt_dir)
 
-            # Build list of source files we are compiling -> objs
-            # (loader template + library code)
+        # Build list of source files we are compiling -> objs
+        # (loader template + library code)
 
-            loader_sources = [self.generate_loader_source(py_source)]
-            for lib_source in lib_sources:
-                if os.path.splitext(lib_source)[1] in self.loader_exts:
-                    loader_sources.append(lib_source)
+        loader_sources = [self.generate_loader_source(py_source)]
+        for lib_source in lib_sources:
+            if os.path.splitext(lib_source)[1] in self.loader_exts:
+                loader_sources.append(lib_source)
 
-            # Add extra compiler args (from Extension or command line)
+        if self.manifest:
+            loader_sources.append(self.generate_rcfile(py_source, tgt_dir))
+                        
+        # Add extra compiler args (from Extension or command line)
 
-            extra_args = ext.extra_compile_args or []
-            if self.cflags:
-                extra_args += self.cflags
+        extra_args = ext.extra_compile_args or []
+        if self.cflags:
+            extra_args += self.cflags
 
-            # Add macros (and remove undef'ed macros)
+        # Add macros (and remove undef'ed macros)
 
-            macros = ext.define_macros[:]
-            for undef in ext.undef_macros:
-                macros.append((undef,))
+        macros = ext.define_macros[:]
+        for undef in ext.undef_macros:
+            macros.append((undef,))
 
-            # compile
+        # compile
 
-            objects = self.compiler.compile(loader_sources,
-                        output_dir = self.build_temp,
-                        macros = macros,
-                        include_dirs = ext.include_dirs,
-                        debug = self.debug,
-                        extra_postargs = extra_args,
-                        depends = ext.depends)
-
-            self._built_objects = objects[:]
-
-            # Add extra objs to link pass
-
-            if ext.extra_objects:
-                objects.extend(ext.extra_objects)
-
-            # Add extra link arguments
-
-            extra_args = ext.extra_link_args or []
-            if self.ldflags:
-                extra_args.extend(self.ldflags)
-
-            # link
-
-            self.compiler.link_executable(
-                    objects,
-                    os.path.splitext(py_source)[0],
-                    libraries = self.get_libraries(ext),
-                    runtime_library_dirs = ext.runtime_library_dirs,
+        objects = self.compiler.compile(loader_sources,
+                    output_dir = self.build_temp,
+                    macros = macros,
+                    include_dirs = ext.include_dirs,
+                    debug = self.debug,
                     extra_postargs = extra_args,
-                    debug = self.debug)
+                    depends = ext.depends)
+
+        self._built_objects = objects[:]
+
+        # Add extra objs to link pass
+
+        if ext.extra_objects:
+            objects.extend(ext.extra_objects)
+
+        # Add extra link arguments
+
+        extra_args = ext.extra_link_args or []
+        if self.ldflags:
+            extra_args.extend(self.ldflags)
+
+        # link
+
+        self.compiler.link_executable(
+                objects,
+                os.path.splitext(py_source)[0],
+                libraries = self.get_libraries(ext),
+                runtime_library_dirs = ext.runtime_library_dirs,
+                extra_postargs = extra_args,
+                debug = self.debug)
 

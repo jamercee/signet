@@ -1,5 +1,9 @@
 .. automodule:: signet.command.build_signet
-    :members: 
-    :undoc-members:
-    :show-inheritance:
+
+Utility Functions
+-----------------
+
+.. autofunction:: module_signatures
+
+.. autofunction:: generate_sigs_decl
 
