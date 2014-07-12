@@ -12,12 +12,15 @@ and compiling signet loaders. It provides all the facilities you require
 for scanning your module's dependencies, and building your custom signet
 loader.
 
-.. function:: setup(arguments)
+.. function:: build_extension(arguments)
 
-   This is the main function responsible for generating your signet loader.
-   It inherits from 
-   `disutils.command.build_ext <https://docs.python.org/2/distutils/apiref.html#module-distutils.core>`_ 
-   and supports all it's parameters.  It adds a few additional arguments of it's own.
+   This is the main function responsible for generating your signet loader. It
+   is not expected to be invoked directly by your code, but installs itself
+   into the distutils.command heirarcy by nature of it's inheritance from
+   `disutils.command.build_ext <https://docs.python.org/2/distutils/apiref.html#module-distutils.core>`_ .
+
+   The **build_signet** class makes available additional arguments you can specify
+   when calling `distutils.core.setup() <https://docs.python.org/2/distutils/apiref.html#distutils.core.setup>`_
 
    .. tabularcolumns:: |l|L|l
 
@@ -43,22 +46,78 @@ loader.
    |                | 0 disable detection                   |                               |
    +----------------+---------------------------------------+-------------------------------+
    | *ext_modules*  | The list of python modules to build   | a list of instances           |
-   |                | signet loader(s) for. *REQUIRED*      | of *distutils.core.Extension* |
-   |                |                                       | [#f1]_                        |
+   |                | signet loader(s) for. *REQUIRED*      | of distutils.core.Extension   |
    +----------------+---------------------------------------+-------------------------------+
    | *mkresource*   | Dynamic generation of windows         | a boolean                     |
-   |                | resources. If you are planning to use |                               |
-   |                | code signing, it's recommended you    |                               |
-   |                | set this option to True               |                               |
+   |                | resources. If you plan to use code    |                               |
+   |                | signing, it's recommended you set     |                               |
+   |                | this option to True                   |                               |
    +----------------+---------------------------------------+-------------------------------+
 
-    .. [#f1] `distutils.core.Exception <https://docs.python.org/2/distutils/apiref.html#distutils.core.Extension>`_
+Windows Resources
+-----------------
 
+In Windows, resources are read-only data embedded in exe's. These resources contain
+meta-data about your executables, that users can inspect using Explorer, Task Manager
+and other administrative tools (`Read more <https://en.wikipedia.org/wiki/Resource_%28Windows%29>`_). 
 
-.. class
-Example ``setup.py``:
+From a secuity perspective, the VESIONINFO resources are an important tool to
+verify the details of a binary.  **build_signet** will generate embedded
+VERSIONINFO resources for your projects when you enable the *mkresource* option
+in *setup.py*. Once enabled you need to specify the resource details for your
+project. There are two options for specifying the required information. The
+simplest is to add special variables to your script, which **build_signet** will
+scan and extract.
 
-.. code-block:: py
+There are seven resources required by the **mkresource** option; six are
+required and a seventh is optional. They are:
+
+    +-----------------------+-----------------------------------------+
+    | special string        | value                                   |
+    +=======================+=========================================+
+    | *__companyname__*     | REQUIRED: Your organization's name      |
+    +-----------------------+-----------------------------------------+
+    | *__filedescription__* | REQUIRED: Version number of your script |
+    +-----------------------+-----------------------------------------+
+    | *__legalcopyright__*  | REQUIRED: The copyright notice that     |
+    |                       | applies to your script.                 |
+    +-----------------------+-----------------------------------------+
+    | *__productname__*     | REQUIRED: The name of the project this  |
+    |                       | script is part of.                      |
+    +-----------------------+-----------------------------------------+
+    | *__productversion__*  | REQUIRED: Version number of the project |
+    |                       | this script is part of.                 |
+    +-----------------------+-----------------------------------------+
+    | *__icon__*            | OPTIONAL: Path name of ico file to add  |
+    |                       | to your *.exe (defaults to app.ico)     |
+    +-----------------------+-----------------------------------------+
+
+The special variables must be in column 1, And their values must be hard coded.
+Try not to get too frisky with whitespace or formatting -- **build_signet** uses
+a simple regex pattern to find them.
+
+The second option for specifying required settings is to add them to your
+*setup.py*, for example::
+
+    setup(
+        name = "hello",                 # mapped to __productname__
+        maintainer = "Acme",            # mapped to __companyname__
+        description = "Cheese Grater",  # mapped to __filedescription__
+        license = 'BSD'                 # mapped to __leaglcopyright__
+        version = '1.0.2'               # mapped to __fileversion__ and __product__version
+        ...
+
+You can mix and match option 1 and 2, specifying some settings in your
+script and other in *setup.py*. Settings in your script take precendence.
+
+Examples
+--------
+
+Simple example, ``hello.py``::
+
+    print('hello world\n')
+
+``setup.py``::
 
     from distutils.core import setup, Extension
     from signet.command.build_signet import build_signet
@@ -67,6 +126,31 @@ Example ``setup.py``:
         cmdclass = {'build_signet': build_signet},
         ext_modules = [Extension('hello', sources=['hello.py'])],
         )
+
+An example to create Windows resource file, ``hello.py``::
+
+    __companyname__ = "Acme, Inc."
+    __filedescription__ = "Cheese shop"
+    __fileversion__ = "1"
+    __legalcopyright__ = "BSD"
+    __productname__ = "Cheesy Income"
+
+    print('Hello world')
+
+``setup.py``::
+
+    from distutils.core import setup, Extension
+    from signet.command.build_signet import build_signet
+
+    setup(name = 'hello',
+        cmdclass = {'build_signet': build_signet},
+        ext_modules = [Extension('hello', sources=['hello.py'])],
+        )
+
+To use generate the Windows resources, use *--mkresource*, eg:
+
+    ``python setup.py build_signet --mkresource``
+
 """
 # pylint: enable=C0301
 
@@ -403,7 +487,7 @@ class build_signet(_build_ext):
         rc['FileVersion'] = (rc.get('FileVersion') or 
                                 getattr(md, 'version', None))
         rc['LegalCopyright'] = (rc.get('LegalCopyright') or 
-                                getattr(md, 'copyright', None))
+                                getattr(md, 'license', None))
         rc['ProductName'] = (rc.get('ProductName') or 
                                 getattr(md, 'name', None))
         rc['ProductVersion'] = (rc.get('ProductVersion') or 
