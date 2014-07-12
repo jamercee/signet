@@ -306,3 +306,36 @@ class TestBuildSignet(unittest.TestCase):
         self.assertTrue(stderr and 'SECURITY DISABLED' in stderr,
                 "unrecognized tampered output %s" % stderr)
 
+    @unittest.skipUnless(os.name == 'nt', 'requires windows')
+    def test_rc_generation(self):
+        r"""test windows resource generation"""
+
+        # Generate signet loader
+
+        hello_py = os.path.join(self.tmpd, 'hello.py')
+        setup_py = os.path.join(self.tmpd, 'setup.py')
+
+        with open(hello_py, 'w') as fout:
+            fout.write('__companyname__ = "Mega-corporation, Inc."\n')
+            fout.write('__filedescription__ = "Cheese shop revenue."\n')
+            fout.write('__fileversion__ = "1"\n')
+            fout.write('__legalcopyright__ = "BSD"\n')
+            fout.write('__productname__ = "Cheesy Income"\n')
+            fout.write('__produceversion__ = "2"\n')
+            fout.write("print('Hello world')\n")
+        with open(setup_py, 'w') as fout:
+            fout.write(
+                "from distutils.core import setup, Extension\n"
+                "from signet.command.build_signet import build_signet\n"
+                "setup(name = 'hello',\n"
+                "    cmdclass = {'build_signet':build_signet},\n"
+                "    ext_modules = [Extension('hello', \n"
+                "                      sources=['hello.py'])],\n"
+                ")\n"
+                )
+
+        (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet',
+                                    ['--mkresource'])
+        if rc or len(stderr):
+            self.fail(stdout + "\n" + stderr)
+
