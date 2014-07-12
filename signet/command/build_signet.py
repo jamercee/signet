@@ -46,6 +46,11 @@ loader.
    |                | signet loader(s) for. *REQUIRED*      | of *distutils.core.Extension* |
    |                |                                       | [#f1]_                        |
    +----------------+---------------------------------------+-------------------------------+
+   | *mkresource*   | Dynamic generation of windows         | a boolean                     |
+   |                | resources. If you are planning to use |                               |
+   |                | code signing, it's recommended you    |                               |
+   |                | set this option to True               |                               |
+   +----------------+---------------------------------------+-------------------------------+
 
     .. [#f1] `distutils.core.Exception <https://docs.python.org/2/distutils/apiref.html#distutils.core.Extension>`_
 
@@ -165,7 +170,7 @@ def parse_rc_version(vstring):
     r"""convert version -> rc version
 
     Microsoft requires versions consists four decimal numbers, comma
-    comma seperated. Missing components are set to zero.
+    seperated. Missing components are set to zero.
 
     Eg: "1.2.3" -> "1,2,3,0"
     """
@@ -189,10 +194,10 @@ def parse_rc_version(vstring):
 
 
 # pylint: disable=C0301
-def extract_manifest_details(py_source):
-    r"""extract manifest from py_source
+def extract_resource_details(py_source):
+    r"""extract resource(s) from py_source
    
-    Each line of py_source is scanned for a manifest value beginning in
+    Each line of py_source is scanned for resource value(s) beginning in
     column 1. The expected pattern is ``__KEY__ = 'value'``, where KEY
     is one of the valid *string-name* parameters described by 
     `MSDN <http://msdn.microsoft.com/en-us/library/windows/desktop/aa381049%28v=vs.85%29.aspx>`_ 
@@ -200,31 +205,33 @@ def extract_manifest_details(py_source):
     """
     # pylint: enable=C0301
 
-    manifest = {
+    ico = os.path.join(os.path.dirname(__file__), 'static', 'app.ico')
+
+    resources = {
         'CompanyName': None, 
         'FileDescription': None,
         'FileVersion': '0.0.0.0',
         'LegalCopyright': None,
         'ProductName': None,
         'ProductVersion': None,
-        'Icon': 'app.ico',
+        'Icon': ico,
         }
 
     with open(py_source) as fin:
         for line in fin:
-            for key in manifest.keys():
-                ma = re.match(r'(?i)__%s__\s*=\s*(\'")(.+)\1' % key, line)
+            for key in resources.keys():
+                ma = re.match(r'(?i)__%s__\s*=\s*(\'|")(.+)\1' % key, line)
                 if ma:
-                    manifest[key] = ma.group(2)
+                    resources[key] = ma.group(2)
                     break
 
-    manifest['FileVersion'] = parse_rc_version(manifest['FileVersion'])
-    if not manifest['ProductVersion']:
-        manifest['ProductVersion'] = manifest['FileVersion']
+    resources['FileVersion'] = parse_rc_version(resources['FileVersion'])
+    if not resources['ProductVersion']:
+        resources['ProductVersion'] = resources['FileVersion']
     else:
-        manifest['ProductVersion'] = parse_rc_version(manifest['FileVersion'])
+        resources['ProductVersion'] = parse_rc_version(resources['FileVersion'])
 
-    return manifest
+    return resources
 
 def copy_lib_source(lib_root, tgt_root):
     r"""Recursively copy copy *lib_root* to *tgt_root* directory"""
@@ -258,11 +265,11 @@ class build_signet(_build_ext):
         ('detection=', None,
          "tamper detection - 0 disabled, 1 warn, 2 normal, 3 signed-binary "
          "(default 2)"),
-        ('manifest', None,
-         "dynamic generation of windows manifest"),
+        ('mkresource', None,
+         "dynamic generation of windows resources"),
         ])
 
-    boolean_options.extend(['manifest'])
+    boolean_options.extend(['mkresource'])
 
     def __init__(self, dist):
         r"""initialize local variables -- BEFORE calling the
@@ -289,7 +296,7 @@ class build_signet(_build_ext):
         self.cflags = []
         self.ldflags = []
         self.detection = None
-        self.manifest = None
+        self.mkresource = None
 
     def finalize_options(self):
         r"""finished initializing option values"""
@@ -326,10 +333,10 @@ class build_signet(_build_ext):
         if self.detection is None:
             self.detection = 2
 
-        # validate manifest generation
+        # validate mkresource generation
 
-        if self.manifest and os.name != 'nt':
-            raise DistutilsSetupError("'manifest' is only a valid "
+        if self.mkresource and os.name != 'nt':
+            raise DistutilsSetupError("'mkresource' is only a valid "
                     "option on windows")
 
     def generate_loader_source(self, py_source):
@@ -382,24 +389,30 @@ class build_signet(_build_ext):
         r"""create windows resource file"""
 
         try:
-            mnf = extract_manifest_details(py_source)
+            rc = extract_resource_details(py_source)
         except ValueError, exc:
             raise DistutilsSetupError("error extracting detailed from %s, %s"
                     % (py_source, str(exc)))
 
         md = self.distribution.metadata
 
-        mnf['CompanyName'] = mnf['CompanyName'] or md.maintainer
-        mnf['FileDescription'] = mnf['FileDescription'] or md.description
-        mnf['FileVersion'] = mnf['FileVersion'] or md.version
-        mnf['LegalCopyright'] = mnf['LegalCopyright'] or md.copyright
-        mnf['ProductName'] = mnf['ProductName'] or md.name
-        mnf['ProductVersion'] = mnf['ProductVersion'] or md.version
+        rc['CompanyName'] = (rc.get('CompanyName') or
+                                getattr(md, 'maintainer', None))
+        rc['FileDescription'] = (rc.get('FileDescription') or 
+                                getattr(md, 'description', None))
+        rc['FileVersion'] = (rc.get('FileVersion') or 
+                                getattr(md, 'version', None))
+        rc['LegalCopyright'] = (rc.get('LegalCopyright') or 
+                                getattr(md, 'copyright', None))
+        rc['ProductName'] = (rc.get('ProductName') or 
+                                getattr(md, 'name', None))
+        rc['ProductVersion'] = (rc.get('ProductVersion') or 
+                                getattr(md, 'version', None))
 
-        for key, val in mnf.items():
+        for key, val in rc.items():
             if not val:
                 raise DistutilsSetupError(
-                    "when 'build_signet' manifest=1, then "
+                    "when 'build_signet' mkresource=1, then "
                     "__%s__ must be set in %s" % (key, py_source))
 
         base = os.path.basename(py_source)
@@ -408,11 +421,16 @@ class build_signet(_build_ext):
         rcfile = os.path.splitext(base)[0] + '.rc'
         rcfile = os.path.join(tgt_dir, rcfile)
 
+        # RC requires a valid escapped path -- simplest to
+        # just convert back slash -> forward slash
+
+        rc['Icon'] = '/'.join(rc['Icon'].split('\\'))
+
         with open(rcfile, 'w') as fout:
-            fout.write('1  ICON    "%s"\n' % mnf['Icon'])
+            fout.write('1  ICON    "%s"\n' % rc['Icon'])
             fout.write('1  VERSIONINFO\n')
-            fout.write('FILEVERSION %s\n' % mnf['FileVersion'])
-            fout.write('PRODUCTVERSION %s\n' % mnf['ProductVersion'])
+            fout.write('FILEVERSION %s\n' % rc['FileVersion'])
+            fout.write('PRODUCTVERSION %s\n' % rc['ProductVersion'])
             fout.write('FILEFLAGSMASK 0x17L\n')
             fout.write('FILEFLAGS 0x0L\n')
             fout.write('FILEOS 0x4L\n')
@@ -422,27 +440,30 @@ class build_signet(_build_ext):
             fout.write('BEGIN\n')
             fout.write('\tBLOCK "StringFileInfo"\n')
             fout.write('\tBEGIN\n')
-            # U.S. English, Unicode
-            fout.write('\t\tBLOCK "040904b0"\n')
+            fout.write('\t\tBLOCK "040904b0"\n')    # US English, Unicode
             fout.write('\t\tBEGIN\n')
             fout.write('\t\t\tVALUE "Comments", "Created by signet loader"\n')
             fout.write('\t\t\tVALUE "CompanyName", "%s"\n' 
-                    % mnf['CompanyName'])
+                    % rc['CompanyName'])
             fout.write('\t\t\tVALUE "FileDescription", "%s"\n'
-                    % mnf['FileDescription'])
+                    % rc['FileDescription'])
             fout.write('\t\t\tVALUE "FileVersion", "%s"\n'
-                    % mnf['FileVersion'])
+                    % rc['FileVersion'])
             fout.write('\t\t\tVALUE "InternalName", "%s"\n'
                     % base)
             fout.write('\t\t\tVALUE "LegalCopyright", "%s"\n'
-                    % mnf['LegalCopyright'])
+                    % rc['LegalCopyright'])
             fout.write('\t\t\tVALUE "OriginalFileName", "%s"\n' 
                     % exename)
             fout.write('\t\t\tVALUE "ProductName", "%s"\n'
-                    % mnf['ProductName'])
+                    % rc['ProductName'])
             fout.write('\t\t\tVALUE "ProductVersion", "%s"\n'
-                    % mnf['ProductVersion'])
+                    % rc['ProductVersion'])
             fout.write('\t\tEND\n')
+            fout.write('\tEND\n')
+            fout.write('\tBLOCK "VarFileInfo"\n')
+            fout.write('\tBEGIN\n')
+            fout.write('\t\tVALUE "Translation", 0x409, 1200\n')
             fout.write('\tEND\n')
             fout.write('END\n')
 
@@ -475,7 +496,7 @@ class build_signet(_build_ext):
             if os.path.splitext(lib_source)[1] in self.loader_exts:
                 loader_sources.append(lib_source)
 
-        if self.manifest:
+        if self.mkresource:
             loader_sources.append(self.generate_rcfile(py_source, tgt_dir))
                         
         # Add extra compiler args (from Extension or command line)
@@ -512,6 +533,8 @@ class build_signet(_build_ext):
         extra_args = ext.extra_link_args or []
         if self.ldflags:
             extra_args.extend(self.ldflags)
+
+        print(objects)
 
         # link
 
