@@ -1,5 +1,5 @@
 This directory contains the signet secure loader template. It will be
-customized by signet.commands.build_ext during the build phase.
+customized by signet.commands.build_signet during the build phase.
 
 If you provide you're own loader template, you'll need the following three
 declarations:
