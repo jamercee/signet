@@ -339,3 +339,33 @@ class TestBuildSignet(unittest.TestCase):
         if rc or len(stderr):
             self.fail(stdout + "\n" + stderr)
 
+    @unittest.skipUnless(os.name == 'nt', 'requires windows')
+    def test_rc_from_setup(self):
+        r"""retrieve resources from setup.py"""
+
+        # Generate signet loader
+
+        hello_py = os.path.join(self.tmpd, 'hello.py')
+        setup_py = os.path.join(self.tmpd, 'setup.py')
+
+        with open(hello_py, 'w') as fout:
+            fout.write("print('Hello world')\n")
+        with open(setup_py, 'w') as fout:
+            fout.write(
+                "from distutils.core import setup, Extension\n"
+                "from signet.command.build_signet import build_signet\n"
+                "setup(name = 'hello',\n"
+                "    maintainer = 'Acme, Inc.',\n"
+                "    description = 'Cheese shop',\n"
+                "    version = '1',\n"
+                "    license = 'BSD',\n"
+                "    cmdclass = {'build_signet':build_signet},\n"
+                "    ext_modules = [Extension('hello', \n"
+                "                      sources=['hello.py'])],\n"
+                ")\n"
+                )
+
+        (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet',
+                                    ['--mkresource'])
+        if rc or len(stderr):
+            self.fail(stdout + "\n" + stderr)
