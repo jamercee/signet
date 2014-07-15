@@ -12,6 +12,8 @@ and compiling signet loaders. It provides all the facilities you require
 for scanning your module's dependencies, and building a custom signet
 loader.
 
+The built loader will be installed '--inplace' with the source file.
+
 .. py:class:: build_signet
 
    .. py:method:: build_extension(arguments)
@@ -36,10 +38,14 @@ loader.
    | *cflags*       | any extra platform- and compiler-     | a list of strings             |
    |                | specific settings to use when         |                               |
    |                | **compiling** the custom loader.      |                               |
+   |                | If you specify this setting on windows|                               |
+   |                | you override our default '/EHsc'.     |                               |
    +----------------+---------------------------------------+-------------------------------+
    | *ldflags*      | any extra platform- and compiler-     | a list of strings             |
    |                | specific settings to use when         |                               |
-   |                | **linking** the custom loader.        |                               |
+   |                | **linking** the custom loader. If you |                               |
+   |                | specify this setting on posix, you    |                               |
+   |                | override our default '--strip-all'    |                               |
    +----------------+---------------------------------------+-------------------------------+
    | *detection*    | The default tamper protection used    | an int                        |
    |                | by your loader. Valid choices are;    |                               |
@@ -49,6 +55,9 @@ loader.
    +----------------+---------------------------------------+-------------------------------+
    | *ext_modules*  | The list of python modules to build   | a list of instances           |
    |                | signet loader(s) for. *REQUIRED*      | of distutils.core.Extension   |
+   +----------------+---------------------------------------+-------------------------------+
+   | *excludes*     | The list of python module dependencies| a list of strings             |
+   |                | to exclude from the signet loader.    |                               |
    +----------------+---------------------------------------+-------------------------------+
    | *mkresource*   | Dynamic generation of windows         | a boolean                     |
    |                | resources. If you plan to use code    |                               |
@@ -168,6 +177,7 @@ Utility Functions
 # ----------------------------------------------------------------------------
 from distutils import log
 from distutils.command.build_ext import build_ext as _build_ext
+from distutils.dep_util import newer_group
 from distutils.dir_util import copy_tree
 from distutils.errors import DistutilsSetupError
 import StringIO
@@ -245,7 +255,7 @@ def module_signatures(py_source, verbose=True):
 
     return sorted(signatures, key=lambda s: s[1])
 
-def generate_sigs_decl(py_source, verbose=True):
+def generate_sigs_decl(py_source, verbose=True, excludes=None):
     r"""Scan *py_source*, return SIGS c++ declaration as string. The 
     returned string will be formatted:
 
@@ -257,10 +267,14 @@ def generate_sigs_decl(py_source, verbose=True):
                 };
     """
 
+    excludes = excludes or []
+
     sigs_decl = StringIO.StringIO()
     sigs_decl.write('const Signature SIGS[] = {\n')
 
     for sha1, mod in module_signatures(py_source, verbose):
+        if mod in excludes:
+            continue
         sigs_decl.write('\t{"%s", "%s"},\n' % (sha1, mod))
     sigs_decl.write('\t};\n')
 
@@ -352,6 +366,8 @@ class build_signet(_build_ext):
         ('detection=', None,
          "tamper detection - 0 disabled, 1 warn, 2 normal, 3 signed-binary "
          "(default 2)"),
+        ('excludes=', None,
+         "list of dependant modules to exlcude from signet loader (comma separated)"),
         ('mkresource', None,
          "dynamic generation of windows resources"),
         ])
@@ -384,15 +400,23 @@ class build_signet(_build_ext):
         self.cflags = []
         self.ldflags = []
         self.detection = None
+        self.excludes = None
         self.mkresource = None
 
     def finalize_options(self):
         r"""finished initializing option values"""
+        
+        # R0912 (too-many-branches)
+        # pylint: disable=R0912
 
         _build_ext.finalize_options(self)
 
+        opts = self.distribution.get_option_dict('build_signet')
+
         # validate loader template
 
+        if self.template is None and opts:
+            self.template = opts.get('template', (None, None))[1]
         if self.template is None:
             self.template = os.path.join(self.signet_root, 
                                     'templates', 'loader.cpp')
@@ -408,20 +432,50 @@ class build_signet(_build_ext):
 
         # validate cflags
 
+        if not self.cflags and opts:
+            self.cflags = opts.get('cflags', (None, []))[1]
         if not self.cflags and os.name == 'nt':
             self.cflags = ['/EHsc']
+        if isinstance(self.cflags, str):
+            # pylint: disable=E1103
+            self.cflags = self.cflags.split(',')
 
         # validate ldflags
-
+    
+        if not self.ldflags and opts:
+            self.opts = opts.get('ldflags', (None, []))[1]
         if not self.ldflags and os.name == 'posix':
             self.ldflags = ['--strip-all']
+        if isinstance(self.ldflags, str):
+            # pylint: disable=E1103
+            self.ldlags = self.ldlags.split(',')
 
         # validate tamper detection
 
         if self.detection is None:
-            self.detection = 2
+            if opts:
+                self.detection = int(opts.get('detection', (None, 2))[1])
+            else:
+                self.detection = 2
+        else:
+            self.detection = int(self.detection)
+
+        # validate excludes
+
+        if self.excludes is None:
+            if opts:
+                self.excludes = opts.get('excludes', (None, []))[1]
+            else: 
+                self.excludes = []
+
+        if isinstance(self.excludes, str):
+            # pylint: disable=E1103
+            self.excludes = self.excludes.split(',')
 
         # validate mkresource generation
+
+        if self.mkresource is None and opts:
+            self.mkresource = opts.get('mkresource', (None, None))[1]
 
         if self.mkresource and os.name != 'nt':
             raise DistutilsSetupError("'mkresource' is only a valid "
@@ -434,7 +488,8 @@ class build_signet(_build_ext):
         suitable substitutions.
         """
 
-        sig_decls = generate_sigs_decl(py_source, verbose=False)
+        sig_decls = generate_sigs_decl(py_source, verbose=False, 
+                excludes=self.excludes)
 
         self.debug_print(sig_decls)
 
@@ -443,7 +498,7 @@ class build_signet(_build_ext):
 
         script_tag = 'const char SCRIPT[]'
         sigs_tag = 'const Signature SIGS[]'
-        tamp_tag = 'int TamperProtection'
+        tamp_tag = 'int TAMPER'
 
         found_script, found_sigs, found_tamp = False, False, False
 
@@ -569,7 +624,16 @@ class build_signet(_build_ext):
 
         py_source = ext.sources[0]
 
-        log.info("building '%s' signet loader", ext.name)
+        depends = ext.sources + ext.depends
+        exe_path = os.path.splitext(py_source)[0]
+        if os.name == 'nt':
+            exe_path += '.exe'
+
+        if not (self.force or newer_group(depends, exe_path, 'newer')):
+            log.info("skipping '%s' loader (up-to-date)", ext.name)
+            return
+        else:
+            log.info("building '%s' signet loader", ext.name)
 
         # Copy libary files from signet pakage to our intended
         # target directory
