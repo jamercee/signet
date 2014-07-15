@@ -31,22 +31,18 @@ emit an error and exit. If everything matches, the loader will run your script.
 Example usage
 -------------
 
-For example, if you had a simple script ``hello.py``:
-
-.. code-block:: py
+For example, if you had a simple script ``hello.py``::
 
     import os
     print('hello from %s' % os.name)
 
-And you deployed it with this simple ``setup.py``
-
-.. code-block:: py
+And you deployed it with this simple ``setup.py``::
 
     from distutils.core import setup, Extension
     from signet.command.build_signet import build_signet
 
     setup(name = 'hello',
-        cmdclass = {'build_signet': build_signet},
+        cmdclass = {'build_signet': build_signet, },
         ext_modules = [Extension('hello', sources=['hello.py'])],
         )
 
@@ -55,6 +51,24 @@ Build your loader::
     python setup.py build_signet
 
 On Windows you'll have ``hello.exe`` and on POSIX you'll have ``hello``.
+
+The signet system also provides facilities for code signing. You'll need to
+modify ``setup.py``::
+
+    from distutils.core import setup, Extension
+    from signet.command.build_signet import build_signet, sign_code
+
+    setup(name = 'hello',
+        cmdclass = {'build_signet': build_signet,
+                    'sign_code': sign_code,
+                   },
+        ext_modules = [Extension('hello', sources=['hello.py'])],
+        )
+
+Build your loader::
+
+    python setup.py build_signet
+    python setup.py sign_code --savedpassword --pfx-file {path-to-pfx}
 
 --------
 Features
@@ -93,6 +107,5 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 
