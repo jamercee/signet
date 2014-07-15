@@ -50,7 +50,9 @@ setup(
     # project details
 
     packages = ['signet', 'signet.command'],
-    package_data = {'signet': ['command/templates/*', 'command/lib/*',]},
+    package_data = {'signet': ['command/templates/*', 
+                               'command/lib/*',
+                               'command/static/*',]},
 
     # testing (assumes you have nose installed)
 
