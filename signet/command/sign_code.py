@@ -342,6 +342,8 @@ class sign_code(config):
             if not os.path.isfile(exename):
                 raise DistutilsSetupError("missing '%s' to sign" % exename)
 
+            log.info('sign %s', exename)
+
             while 1:
 
                 timestamp_url = self.next_timeserver()
@@ -362,11 +364,15 @@ class sign_code(config):
                             stdout = subprocess.PIPE, stderr = subprocess.PIPE)
                 (stdout, stderr) = task.communicate()
                 if task.returncode == 2:
+                    log.debug('failed to sign w/ timestamp url %s', 
+                            timestamp_url)
                     continue
 
-                log.info(stdout)
                 if task.returncode:
+                    log.info(stdout)
                     log.error(stderr)
+                else:
+                    log.debug(stdout)
 
                 break
 
