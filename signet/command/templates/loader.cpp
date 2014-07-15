@@ -37,6 +37,7 @@ public:
 		return o; 
 		}
 	void chg(PyObject* ptr) {
+		/* steal reference to ptr */
 		Py_XDECREF(o);
 		o = ptr;
 		}
@@ -52,7 +53,7 @@ struct Signature {				/* module signatures */
 //
 // SCRIPT	- will be replaced with the script name we are loading.
 // SIGS   	- module signatures {{"hexdigest","module-name"},...}
-// TamperProtection - controls how tampering is handled
+// TAMPER 	- controls how tampering is handled
 //	3  - maximum, SCRIPT & dependency check + require signed binary
 //		 (windows only)
 //	2  - normal, SCRIPT & dependency check
@@ -61,12 +62,20 @@ struct Signature {				/* module signatures */
 // ---------------------------------------------------------------------------
 
 const char SCRIPT[] = "";
-const Signature SIGS[] = {};
-int TamperProtection = 2;
+const Signature SIGS[] = {{NULL,NULL}};
+int TAMPER = 2;
 
 
 PyObject* FndFx;				/* import imp; FndFx = imp.find_module */
+PyObject* LoadFx;				/* import imp; LoadFx = imp.load_module */
+
 std::vector<PyObject*> Imports;	/* list of imported modules */
+
+#ifdef DEBUG
+int Debug = 1;
+#else
+int Debug = 0;
+#endif
 
 // ---------------------------------------------------------------------------
 // FUNCTIONS
@@ -113,6 +122,52 @@ void python_err(const char fmt[], ...) {
 	fprintf(stderr, "No python error ocurred.\n");
 	}
 
+void log_debug(const char fmt[], ...) {
+
+	if (!Debug)
+		return;
+
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	}
+
+/* accept python list, return printable string */
+
+std::string list_asstring(PyObject* py_list) {
+
+	/* validate the py_list */
+
+	if (py_list == Py_None)
+		return std::string("");
+	if (!PyList_Check(py_list))
+			return std::string("py_list not a list");
+	if (PyList_Size(py_list) < 1)
+			return std::string("[]");
+
+	/* iterate py_list, build response */
+
+	std::string rsp = "[";
+	for(int i = 0; i < PyList_Size(py_list); i++) {
+
+		PyObject* py_item = PyList_GetItem(py_list, i);
+		char* item;
+		if (PyString_Check(py_item))
+			item = PyString_AsString(py_item);
+		else
+			item = "(not a string type)";
+
+		/* add item to response */
+
+		if (rsp.length() > 1)
+			rsp += ", ";
+		rsp += item;
+		}
+
+	return rsp + "]";
+	}
+
 /* Calculate sha1 file hash, return hexdigest as ascii string (lowercase) */
 
 char* sha1hexdigest(const char fname[]) {
@@ -152,7 +207,8 @@ char* sha1hexdigest(const char fname[]) {
 
 /* invoke imp.find_module() */
 
-int find_module(const char mod_name[], PyObject* paths, std::string& pathname) {
+int find_module(const char mod_name[], PyObject* paths, PyObject** file, 
+		PyObject** pathname, PyObject** description) {
 
 	PyPtr results( PyObject_CallFunction(FndFx, "sO", mod_name, paths) );
 	if (results.get() == NULL) {
@@ -165,19 +221,33 @@ int find_module(const char mod_name[], PyObject* paths, std::string& pathname) {
 		return -1;
 		}
 
-	PyObject* file, *descr;
-	char* _pathname;
-
-	if (!PyArg_ParseTuple(results.get(), "OsO", &file, &_pathname, &descr)) {
+	if (!PyArg_ParseTuple(results.get(), "OOO", file, pathname, description)) {
 		python_err("error retrieving imp.find_module results");
 		return -1;
 		}
 
-	if (file != Py_None) {
-		PyObject_CallMethod(file, "close", NULL);
+	Py_INCREF(*file);
+	Py_INCREF(*pathname);
+	Py_INCREF(*description);
+
+	return 0;
+	}
+
+/* invoke imp.load_module() */
+
+int load_module(const char mod_name[], PyObject* py_file, PyObject* py_pathname, 
+		PyObject* py_description) {
+
+	PyPtr results( PyObject_CallFunction(LoadFx, "sOOO", mod_name,
+				py_file, py_pathname, py_description) );
+	if (results.get() == NULL) {
+		python_err("error loading module %s\n", mod_name);
+		return -1;
 		}
 
-	pathname = _pathname;
+	if (py_file != Py_None) {
+		PyObject_CallMethod(py_file, "close", NULL);
+		}
 
 	return 0;
 	}
@@ -192,37 +262,74 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 	 * import P, then use find_module with the path argument set to P.__path__
 	 */
 
-	PyPtr py_parent_paths(Py_None);		/* last parent we encountered (as list) */
+	PyPtr py_parent_path(Py_None);		/* last parent we encountered (as list) */
+
+	PyObject* py_file = NULL;
+	PyObject* py_pathname = NULL;
+	PyObject* py_description = NULL;
+
+	int rc = 0;
+
+	log_debug(">>> get_module_path %s\n", mod_name);
 
 	/* Iterate module heirarchy */
 
-	const char* dot;
-	for(dot = mod_name; (dot = strchr(dot, '.')) != NULL; dot++) {
+	const char* mp, *dot;
+	for(mp = dot = mod_name; (dot = strchr(dot, '.')) != NULL; dot++) {
 
 		/* find P */
 
-		int plen = dot - mod_name;
-		std::string parent(mod_name, plen);
+		int plen = dot - mp;
+		std::string parent(mp, plen);
 
-		if (find_module(parent.c_str(), py_parent_paths.get(), pathname)) {
-			return -1;
+		log_debug("\tfind M %s, P.__path__ %s\n", 
+				parent.c_str(), list_asstring(py_parent_path.get()).c_str());
+
+		if (find_module(parent.c_str(), py_parent_path.get(), &py_file, 
+					&py_pathname, &py_description)) {
+			rc = -1;
+			goto _return;
 			}
 
-		/* import P */
+		/* load_module P.M */
 
-		PyObject* py_parent = PyImport_ImportModule(parent.c_str());
-		if (py_parent == NULL) {
-			python_err("error importing parent %s", parent.c_str());
-			return -1;
+		std::string heirarchy = std::string(mod_name, dot - mod_name);
+		log_debug("\tload_module P.M %s\n", heirarchy.c_str());
+
+		if (load_module(heirarchy.c_str(), py_file, py_pathname, 
+					py_description)) {
+			rc = -1;
+			goto _return;
 			}
-		Imports.push_back(py_parent);
 
 		/* save P.__path__ */
 
-		PyObject* py_path = PyObject_GetAttrString(py_parent, "__path__");
-		if (py_path != NULL) {
-			py_parent_paths.chg( py_path );
+		log_debug("\tsave P.__path__ %s\n", PyString_AsString(py_pathname));
+
+		PyObject* py_plist = PyList_New(0);
+		if (py_plist == NULL) {
+			python_err("out-of-memory in get_module_path()\n");
+			rc = -1;
+			goto _return;
 			}
+		if (PyList_Append(py_plist, py_pathname)) {
+			python_err("append to list error in get_module_path()\n");
+			Py_CLEAR(py_plist);
+			rc = -1;
+			goto _return;
+			}
+
+		/* steals the reference */
+
+		py_parent_path.chg(py_plist);
+		py_plist = NULL;
+
+		Py_CLEAR(py_file);
+		Py_CLEAR(py_description);
+
+		/* move to next module (if one exists) */
+
+		mp = dot + 1;
 		}
 
 	/* seek to last module is heirarchy */
@@ -235,9 +342,16 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 
 	/* find M */
 
-	if (find_module(dot, py_parent_paths.get(), pathname)) {
-		return -1;
+	log_debug("\tlast find M %s, P.__path__ %s\n\n", 
+			dot, list_asstring(py_parent_path.get()).c_str());
+
+	if (find_module(dot, py_parent_path.get(), &py_file, &py_pathname, 
+				&py_description)) {
+		rc = -1;
+		goto _return;
 		}
+
+	pathname = PyString_AsString(py_pathname);
 
 	/* if dir, append package __init__.py */
 
@@ -250,7 +364,12 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 		pathname += "/__init__.py";
 		}
 
-	return 0;
+_return:
+	Py_XDECREF(py_file);
+	Py_XDECREF(py_pathname);
+	Py_XDECREF(py_description);
+
+	return rc;
 	}
 
 int validate() {
@@ -279,6 +398,17 @@ int validate() {
 		return -1;
 		}
 
+	/* LoadFx = imp.load_module */
+
+	LoadFx = PyObject_GetAttrString(imp_mod, "load_module");
+	if (FndFx == NULL) {
+		python_err("error linking with imp.load_module");
+		return -1;
+		}
+
+	std::string ignore;
+	get_module_path("logging", ignore);
+
 	/* iterate signatures, compare them to installed editions */
 
 	size_t max = sizeof(SIGS) / sizeof(SIGS[0]);
@@ -291,10 +421,12 @@ int validate() {
 		if (get_module_path(sp->mod_name, pathname))
 			continue;
 
+		log_debug(">>> Found module %s -> %s\n", sp->mod_name, pathname.c_str());
+
 		const char* hexdigest = sha1hexdigest(pathname.c_str());
 		if (hexdigest != NULL && strcmpi(hexdigest, sp->hexdigest) != 0) {
 			fprintf(stderr, "SECURITY VIOLATION: '%s' has been tampered with!\n", pathname.c_str());
-			if (TamperProtection >= 2)
+			if (TAMPER >= 2)
 				return -1;
 			}
 
@@ -306,11 +438,12 @@ int validate() {
 		/* import the certified module */
 
 		PyObject* py_import = PyImport_ImportModule(sp->mod_name);
-		if (py_import == NULL) {
-			python_err("unable to import certified module %s\n", sp->mod_name);
-			return -1;
+		if (py_import != NULL) {
+			Imports.push_back(py_import);
 			}
-		Imports.push_back(py_import);
+		else if (Debug) {
+			python_err("unable to import certified module %s\n", sp->mod_name);
+			}
 		}
 
 	return 0;
@@ -328,17 +461,17 @@ int parse_options(int argc, char* argv[]) {
 	for(int i = 1; i < argc; i++) {
 
 		if (strcmp(argv[i], "--SECURITYOFF") == 0) {
-			TamperProtection = 0;
+			TAMPER = 0;
 			fprintf(stderr, "SECURITY DISABLED\n");
 			}
 
 		else if (strcmp(argv[i], "--SECURITYWARN") == 0) {
-			TamperProtection = 1;
+			TAMPER = 1;
 			fprintf(stderr, "SECURITY DISABLED\n");
 			}
 
 		else if (strcmp(argv[i], "--SECURITYMAX") == 0) {
-			TamperProtection = 3;
+			TAMPER = 3;
 			fprintf(stderr, "SECURITY MAXIMUM Enabled\n");
 			}
 
@@ -360,11 +493,10 @@ int parse_options(int argc, char* argv[]) {
 
 /* Initialize python, 
  * Validate module security
- * Run SCRIPT
  * Cleanup
  */
 
-int main(int argc, char* argv[]) {
+int run(int argc, char* argv[]) {
 
 	/* initialize python */
 
@@ -383,7 +515,7 @@ int main(int argc, char* argv[]) {
 
 	/* tamper protection set to warn or max? */
 
-	if (TamperProtection == 1 || TamperProtection == 3) {
+	if (TAMPER == 1 || TAMPER == 3) {
 
 		/* validate binary signature */
 
@@ -391,33 +523,14 @@ int main(int argc, char* argv[]) {
 
 		/* if untrusted, and max protection, exit */
 
-		if (trusted < 1 && TamperProtection == 3)
+		if (trusted < 1 && TAMPER == 3)
 			rc = -1;
 		}
 
 	/* validate module security */
 
-	if (rc == 0 && TamperProtection >= 1)
+	if (rc == 0 && TAMPER >= 1)
 		rc = validate();
-
-	/* run successfully validated script */
-
-	if (rc == 0) {
-		std::string script = dirname(argv[0]) + SCRIPT;
-		FILE* fin = fopen(script.c_str(), "r");
-		if (fin) {
-			rc = PyRun_SimpleFileEx(fin, SCRIPT, 1);
-
-			/* catch and report exception */
-
-			if (rc && PyErr_Occurred())
-				PyErr_Print();
-			}
-		else{
-			fprintf(stderr, "could not open %s", script.c_str());
-			rc = -1;
-			}
-		}
 
 	/* release references */
 
@@ -429,6 +542,50 @@ int main(int argc, char* argv[]) {
 
 	if (FndFx != NULL) {
 		Py_XDECREF(FndFx);
+		}
+	if (LoadFx != NULL) {
+		Py_XDECREF(LoadFx);
+		}
+
+	Py_Finalize();
+
+	return rc;
+	}
+
+int main(int argc, char* argv[]) {
+
+	if (run(argc, argv))
+		return -1;
+
+	/* initialize python */
+
+	Py_SetProgramName((char*)SCRIPT);
+
+	Py_Initialize();
+
+	/* parse command line */
+
+	if (parse_options(argc, argv)) {
+		Py_Finalize();
+		return -1;
+		}
+
+	
+	int rc = 0;
+
+	std::string script = dirname(argv[0]) + SCRIPT;
+	FILE* fin = fopen(script.c_str(), "r");
+	if (fin) {
+		rc = PyRun_SimpleFileEx(fin, SCRIPT, 1);
+
+		/* catch and report exception */
+
+		if (rc && PyErr_Occurred())
+			PyErr_Print();
+		}
+	else{
+		fprintf(stderr, "could not open %s", script.c_str());
+		rc = -1;
 		}
 
 	Py_Finalize();
