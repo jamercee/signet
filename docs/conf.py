@@ -267,7 +267,7 @@ texinfo_documents = [
 epub_title = u'signet'
 epub_author = u'Author'
 epub_publisher = u'Author'
-epub_copyright = u'2014, Author'
+epub_copyright = u'Carroll-Net, Inc, 2014'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'signet'

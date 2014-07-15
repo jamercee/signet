@@ -1,9 +1,4 @@
 .. automodule:: signet.command.build_signet
+    :noindex:
 
-Utility Functions
------------------
-
-.. autofunction:: module_signatures
-
-.. autofunction:: generate_sigs_decl
 
