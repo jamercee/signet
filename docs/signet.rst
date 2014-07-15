@@ -2,12 +2,11 @@ signet package
 ==============
 
 .. automodule:: signet
-    :members:
-    :undoc-members:
-    :show-inheritance:
+    :noindex:
 
 .. toctree::
     :maxdepth: 2
 
     signet.command.build_signet
+    signet.command.sign_code
 
