@@ -344,7 +344,7 @@ int parse_options(int argc, char* argv[]) {
 
 		else if (strncmp(argv[i], "--SECURITY", 10) == 0) {
 			fprintf(stderr, "error: invalid setting, "
-					"use either --SECURITYWARN or --SECURITYOFF\n");
+					"valid choices are SECURITY(OFF|WARN|MAX)\n");
 			return -1;
 			}
 
