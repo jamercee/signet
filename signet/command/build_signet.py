@@ -9,25 +9,27 @@ r""":mod:`build_signet` - Build a custom signet loader
 
 The :mod:`signet.command.build_signet` module is responsible for building
 and compiling signet loaders. It provides all the facilities you require
-for scanning your module's dependencies, and building your custom signet
+for scanning your module's dependencies, and building a custom signet
 loader.
 
-.. function:: build_extension(arguments)
+.. py:class:: build_signet
+
+   .. py:method:: build_extension(arguments)
 
    This is the main function responsible for generating your signet loader. It
    is not expected to be invoked directly by your code, but installs itself
    into the distutils.command heirarcy by nature of it's inheritance from
    `disutils.command.build_ext <https://docs.python.org/2/distutils/apiref.html#module-distutils.core>`_ .
 
-   The **build_signet** class makes available additional arguments you can specify
-   when calling `distutils.core.setup() <https://docs.python.org/2/distutils/apiref.html#distutils.core.setup>`_
+   **build_signet** makes available additional arguments you can specify
+   when calling `distutils.core.setup() <https://docs.python.org/2/distutils/apiref.html#distutils.core.setup>`_ 
 
    .. tabularcolumns:: |l|L|l
 
    +----------------+---------------------------------------+-------------------------------+
    | argument name  | value                                 | type                          |
    +================+=======================================+===============================+
-   | *template*     | The source to a custom loader         | a string                      |
+   | *template*     | The path to a custom loader           | a string                      |
    |                | to override the default loader        |                               |
    |                | provided by signet.                   |                               |
    +----------------+---------------------------------------+-------------------------------+
@@ -58,18 +60,18 @@ Windows Resources
 -----------------
 
 In Windows, resources are read-only data embedded in exe's. These resources contain
-meta-data about your executables, that users can inspect using Explorer, Task Manager
+meta-data about your executables that users can inspect with Explorer, Task Manager
 and other administrative tools (`Read more <https://en.wikipedia.org/wiki/Resource_%28Windows%29>`_). 
 
 From a secuity perspective, the VESIONINFO resources are an important tool to
 verify the details of a binary.  **build_signet** will generate embedded
-VERSIONINFO resources for your projects when you enable the *mkresource* option
+VERSIONINFO resources for your loader when you enable the *mkresource* option
 in *setup.py*. Once enabled you need to specify the resource details for your
-project. There are two options for specifying the required information. The
+loader. There are two mechanisms for specifying the required information. The
 simplest is to add special variables to your script, which **build_signet** will
 scan and extract.
 
-There are seven resources required by the **mkresource** option; six are
+There are seven resources scanned by **mkresource** option; six are
 required and a seventh is optional. They are:
 
     +-----------------------+-----------------------------------------+
@@ -89,25 +91,25 @@ required and a seventh is optional. They are:
     |                       | this script is part of.                 |
     +-----------------------+-----------------------------------------+
     | *__icon__*            | OPTIONAL: Path name of ico file to add  |
-    |                       | to your *.exe (defaults to app.ico)     |
+    |                       | to your .exe (defaults to app.ico)      |
     +-----------------------+-----------------------------------------+
 
-The special variables must be in column 1, And their values must be hard coded.
-Try not to get too frisky with whitespace or formatting -- **build_signet** uses
-a simple regex pattern to find them.
+The special variables must be in column 1 in your script, And their values must
+be hard coded.  Try not to get too frisky with whitespace or formatting --
+**build_signet** uses a simple regex pattern to find them.
 
-The second option for specifying required settings is to add them to your
+The second mechanism to specify required resources is to add them to
 *setup.py*, for example::
 
     setup(
         name = "hello",                 # mapped to __productname__
-        maintainer = "Acme",            # mapped to __companyname__
+        maintainer = "Acme, Inc",       # mapped to __companyname__
         description = "Cheese Grater",  # mapped to __filedescription__
         license = 'BSD'                 # mapped to __leaglcopyright__
         version = '1.0.2'               # mapped to __fileversion__ and __product__version
         ...
 
-You can mix and match option 1 and 2, specifying some settings in your
+You can mix and match mechanism 1 and 2, specifying some settings in your
 script and other in *setup.py*. Settings in your script take precendence.
 
 Examples
@@ -147,9 +149,16 @@ An example to create Windows resource file, ``hello.py``::
         ext_modules = [Extension('hello', sources=['hello.py'])],
         )
 
-To use generate the Windows resources, use *--mkresource*, eg:
+To generate the Windows resources, use *--mkresource*, eg:
 
     ``python setup.py build_signet --mkresource``
+
+Utility Functions
+-----------------
+
+.. autofunction:: module_signatures
+
+.. autofunction:: generate_sigs_decl
 
 """
 # pylint: enable=C0301
@@ -159,13 +168,13 @@ To use generate the Windows resources, use *--mkresource*, eg:
 # ----------------------------------------------------------------------------
 from distutils import log
 from distutils.command.build_ext import build_ext as _build_ext
+from distutils.dir_util import copy_tree
 from distutils.errors import DistutilsSetupError
 import StringIO
 import modulefinder
 import hashlib
 import os
 import re
-import shutil
 
 # ----------------------------------------------------------------------------
 # Module level initializations
@@ -178,9 +187,15 @@ __email__      = 'jim@carroll.com'
 __status__     = 'Production'
 __copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
-def module_signatures(py_source):
+def module_signatures(py_source, verbose=True):
     r"""Scan *py_source* for dependencies, and return list of
         2-tuples [(hexdigest, modulename), ...], sorted by modulename.
+
+        To see what signatures signet will use when building your loader::
+
+            from signet.command.build_signet import module_signatures
+            for hash, mod in module_signatures('hello.py'):
+                print hash, mod
     """
 
     signatures = []
@@ -208,7 +223,8 @@ def module_signatures(py_source):
                  getattr(mod, '__file__', None))
 
         if not fname:
-            log.warn("can't find module '%s'", modname)
+            if verbose:
+                log.warn("can't find module '%s'", modname)
         else:
             modules[modname] = fname
 
@@ -229,8 +245,8 @@ def module_signatures(py_source):
 
     return sorted(signatures, key=lambda s: s[1])
 
-def generate_sigs_decl(py_source):
-    r"""Scan *py_source*, return SIGS c++ declaration as string. The
+def generate_sigs_decl(py_source, verbose=True):
+    r"""Scan *py_source*, return SIGS c++ declaration as string. The 
     returned string will be formatted:
 
     .. code-block:: c
@@ -244,7 +260,7 @@ def generate_sigs_decl(py_source):
     sigs_decl = StringIO.StringIO()
     sigs_decl.write('const Signature SIGS[] = {\n')
 
-    for sha1, mod in module_signatures(py_source):
+    for sha1, mod in module_signatures(py_source, verbose):
         sigs_decl.write('\t{"%s", "%s"},\n' % (sha1, mod))
     sigs_decl.write('\t};\n')
 
@@ -317,19 +333,6 @@ def extract_resource_details(py_source):
 
     return resources
 
-def copy_lib_source(lib_root, tgt_root):
-    r"""Recursively copy copy *lib_root* to *tgt_root* directory"""
-
-    libs = []
-
-    for root, _, files in os.walk(lib_root):
-        for fname in files:
-            src_fname = os.path.join(root, fname)
-            shutil.copy(src_fname, tgt_root)
-            libs.append(fname)
-
-    return libs
-
 class build_signet(_build_ext):
     r"""Build signet loader."""
 
@@ -374,6 +377,7 @@ class build_signet(_build_ext):
 
     def initialize_options(self):
         r"""set default option values"""
+
         _build_ext.initialize_options(self)
 
         self.template = None
@@ -430,11 +434,12 @@ class build_signet(_build_ext):
         suitable substitutions.
         """
 
-        sig_decls = generate_sigs_decl(py_source)
+        sig_decls = generate_sigs_decl(py_source, verbose=False)
 
         self.debug_print(sig_decls)
 
-        loader_source = py_source[0:-3] + '.cpp'
+        loader_source = os.path.join(self.build_lib, 
+                            os.path.basename(py_source[0:-3]) + '.cpp')
 
         script_tag = 'const char SCRIPT[]'
         sigs_tag = 'const Signature SIGS[]'
@@ -569,8 +574,7 @@ class build_signet(_build_ext):
         # Copy libary files from signet pakage to our intended
         # target directory
 
-        tgt_dir = os.path.dirname(os.path.abspath(py_source))
-        lib_sources = copy_lib_source(self.lib_root, tgt_dir)
+        lib_sources = copy_tree(self.lib_root, self.build_lib, verbose=0)
 
         # Build list of source files we are compiling -> objs
         # (loader template + library code)
@@ -581,7 +585,7 @@ class build_signet(_build_ext):
                 loader_sources.append(lib_source)
 
         if self.mkresource:
-            loader_sources.append(self.generate_rcfile(py_source, tgt_dir))
+            loader_sources.append(self.generate_rcfile(py_source, self.build_lib))
                         
         # Add extra compiler args (from Extension or command line)
 
@@ -598,7 +602,6 @@ class build_signet(_build_ext):
         # compile
 
         objects = self.compiler.compile(loader_sources,
-                    output_dir = self.build_temp,
                     macros = macros,
                     include_dirs = ext.include_dirs,
                     debug = self.debug,
@@ -617,8 +620,6 @@ class build_signet(_build_ext):
         extra_args = ext.extra_link_args or []
         if self.ldflags:
             extra_args.extend(self.ldflags)
-
-        print(objects)
 
         # link
 
