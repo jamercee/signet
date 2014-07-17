@@ -1,0 +1,353 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>build_signet - Build a custom signet loader &mdash; signet  documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="signet  documentation" href="index.html" />
+    <link rel="up" title="signet package" href="signet.html" />
+    <link rel="next" title="sign_code - Digially sign code" href="signet.command.sign_code.html" />
+    <link rel="prev" title="signet package" href="signet.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="signet.command.sign_code.html" title="sign_code - Digially sign code"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="signet.html" title="signet package"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">signet  documentation</a> &raquo;</li>
+          <li><a href="signet.html" accesskey="U">signet package</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-signet.command.build_signet">
+<span id="build-signet-build-a-custom-signet-loader"></span><h1><tt class="xref py py-mod docutils literal"><span class="pre">build_signet</span></tt> - Build a custom signet loader<a class="headerlink" href="#module-signet.command.build_signet" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-signet.command.build_signet" title="signet.command.build_signet: Create a signet loader for a python script."><tt class="xref py py-mod docutils literal"><span class="pre">signet.command.build_signet</span></tt></a> module is responsible for building
+and compiling signet loaders. It provides all the facilities you require
+for scanning your module&#8217;s dependencies, and building a custom signet
+loader.</p>
+<p>The built loader will be installed in the same directory as the script file.</p>
+<dl class="class">
+<dt id="signet.command.build_signet.build_signet">
+<em class="property">class </em><tt class="descclassname">signet.command.build_signet.</tt><tt class="descname">build_signet</tt><a class="reference internal" href="_modules/signet/command/build_signet.html#build_signet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#signet.command.build_signet.build_signet" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="signet.command.build_signet.build_signet.build_extension">
+<tt class="descname">build_extension</tt><big>(</big><em>arguments</em><big>)</big><a class="reference internal" href="_modules/signet/command/build_signet.html#build_signet.build_extension"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#signet.command.build_signet.build_signet.build_extension" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This is the main function responsible for generating your signet loader. It
+is not expected to be invoked directly by your code, but installs itself
+into the distutils.command heirarcy by nature of it&#8217;s inheritance from
+<a class="reference external" href="https://docs.python.org/2/distutils/apiref.html#module-distutils.core">disutils.command.build_ext</a> .</p>
+<p><strong>build_signet</strong> makes available additional arguments you can specify
+when calling <a class="reference external" href="https://docs.python.org/2/distutils/apiref.html#distutils.core.setup">distutils.core.setup()</a></p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="45%" />
+<col width="36%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">argument name</th>
+<th class="head">value</th>
+<th class="head">type</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><em>template</em></td>
+<td>The path to a custom loader
+to override the default loader
+provided by signet.</td>
+<td>a string</td>
+</tr>
+<tr class="row-odd"><td><em>cflags</em></td>
+<td>any extra platform- and compiler-
+specific settings to use when
+<strong>compiling</strong> the custom loader.
+If you specify this setting on windows
+you override our default &#8216;/EHsc&#8217;.</td>
+<td>a list of strings</td>
+</tr>
+<tr class="row-even"><td><em>ldflags</em></td>
+<td>any extra platform- and compiler-
+specific settings to use when
+<strong>linking</strong> the custom loader. If you
+specify this setting on posix, you
+override our default &#8216;&#8211;strip-all&#8217;</td>
+<td>a list of strings</td>
+</tr>
+<tr class="row-odd"><td><em>detection</em></td>
+<td>The default tamper protection used
+by your loader. Valid choices are;
+3 require signed binary, 2 normal
+detection (default), 1 warn only,
+0 disable detection</td>
+<td>an int</td>
+</tr>
+<tr class="row-even"><td><em>ext_modules</em></td>
+<td>The list of python modules to build
+signet loader(s) for. <em>REQUIRED</em></td>
+<td>a list of instances
+of distutils.core.Extension</td>
+</tr>
+<tr class="row-odd"><td><em>excludes</em></td>
+<td>The list of python module dependencies
+to exclude from the signet loader.</td>
+<td>a list of strings</td>
+</tr>
+<tr class="row-even"><td><em>mkresource</em></td>
+<td>Dynamic generation of windows
+resources. If you plan to use code
+signing, it&#8217;s recommended you set
+this option to True</td>
+<td>a boolean</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<div class="section" id="windows-resources">
+<h2>Windows Resources<a class="headerlink" href="#windows-resources" title="Permalink to this headline">¶</a></h2>
+<p>In Windows, resources are read-only data embedded in exe&#8217;s. These resources contain
+meta-data about your executables that users can inspect with Explorer, Task Manager
+and other administrative tools (<a class="reference external" href="https://en.wikipedia.org/wiki/Resource_%28Windows%29">Read more</a>).</p>
+<p>From a secuity perspective, the VESIONINFO resources are an important tool to
+verify the details of a binary.  <strong>build_signet</strong> will generate embedded
+VERSIONINFO resources for your loader when you enable the <em>mkresource</em> option
+in <em>setup.py</em>. Once enabled you need to specify the resource details for your
+project. There are two mechanisms for specifying the required information. The
+simplest is to add special variables to your script, which <strong>build_signet</strong> will
+scan and extract.</p>
+<p>There are seven resources scanned by <strong>mkresource</strong> option; six are
+required and a seventh is optional. They are:</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="36%" />
+<col width="64%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">special string</th>
+<th class="head">value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><em>__companyname__</em></td>
+<td>REQUIRED: Your organization&#8217;s name</td>
+</tr>
+<tr class="row-odd"><td><em>__fileversion__</em></td>
+<td>REQUIRED: Version number of your script</td>
+</tr>
+<tr class="row-even"><td><em>__filedescription__</em></td>
+<td>REQUIRED: Simple file description.</td>
+</tr>
+<tr class="row-odd"><td><em>__legalcopyright__</em></td>
+<td>REQUIRED: The copyright notice that
+applies to your script.</td>
+</tr>
+<tr class="row-even"><td><em>__productname__</em></td>
+<td>REQUIRED: The name of the project this
+script is part of.</td>
+</tr>
+<tr class="row-odd"><td><em>__productversion__</em></td>
+<td>REQUIRED: Version number of the project
+this script is part of.</td>
+</tr>
+<tr class="row-even"><td><em>__icon__</em></td>
+<td>OPTIONAL: Path name of ico file to add
+to your .exe (defaults to app.ico)</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The special variables must be in column 1 in your script, And their values must
+be hard coded.  Try not to get too frisky with whitespace or formatting &#8211;
+<strong>build_signet</strong> uses a simple regex pattern to find them.</p>
+<p>The second mechanism to specify required resources is to add them to
+<em>setup.py</em>, for example:</p>
+<div class="highlight-python"><div class="highlight"><pre>setup(
+    name = &quot;hello&quot;,                 # mapped to __productname__
+    maintainer = &quot;Acme, Inc&quot;,       # mapped to __companyname__
+    description = &quot;Cheese Grater&quot;,  # mapped to __filedescription__
+    license = &#39;BSD&#39;                 # mapped to __leaglcopyright__
+    version = &#39;1.0.2&#39;               # mapped to __fileversion__ and __productversion__
+    ...
+</pre></div>
+</div>
+<p>You can mix and match mechanism 1 and 2, specifying some settings in your
+script and other in <em>setup.py</em>. Settings in your script take precendence.</p>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p>Simple example, <tt class="docutils literal"><span class="pre">hello.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">print</span><span class="p">(</span><span class="s">&#39;hello world</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">setup.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">distutils.core</span> <span class="kn">import</span> <span class="n">setup</span><span class="p">,</span> <span class="n">Extension</span>
+<span class="kn">from</span> <span class="nn">signet.command.build_signet</span> <span class="kn">import</span> <span class="n">build_signet</span>
+
+<span class="n">setup</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;hello&#39;</span><span class="p">,</span>
+    <span class="n">cmdclass</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span><span class="p">:</span> <span class="n">build_signet</span><span class="p">},</span>
+    <span class="n">ext_modules</span> <span class="o">=</span> <span class="p">[</span><span class="n">Extension</span><span class="p">(</span><span class="s">&#39;hello&#39;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;hello.py&#39;</span><span class="p">])],</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>An example to create Windows resource file, <tt class="docutils literal"><span class="pre">hello.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">__companyname__</span> <span class="o">=</span> <span class="s">&quot;Acme, Inc.&quot;</span>
+<span class="n">__filedescription__</span> <span class="o">=</span> <span class="s">&quot;Cheese shop&quot;</span>
+<span class="n">__fileversion__</span> <span class="o">=</span> <span class="s">&quot;1&quot;</span>
+<span class="n">__legalcopyright__</span> <span class="o">=</span> <span class="s">&quot;BSD&quot;</span>
+<span class="n">__productname__</span> <span class="o">=</span> <span class="s">&quot;Cheesy Income&quot;</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s">&#39;Hello world&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">setup.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">distutils.core</span> <span class="kn">import</span> <span class="n">setup</span><span class="p">,</span> <span class="n">Extension</span>
+<span class="kn">from</span> <span class="nn">signet.command.build_signet</span> <span class="kn">import</span> <span class="n">build_signet</span>
+
+<span class="n">setup</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;hello&#39;</span><span class="p">,</span>
+    <span class="n">cmdclass</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span><span class="p">:</span> <span class="n">build_signet</span><span class="p">},</span>
+    <span class="n">ext_modules</span> <span class="o">=</span> <span class="p">[</span><span class="n">Extension</span><span class="p">(</span><span class="s">&#39;hello&#39;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;hello.py&#39;</span><span class="p">])],</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>To generate the Windows resources:</p>
+<blockquote>
+<div><tt class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">build_signet</span> <span class="pre">--mkresource</span></tt></div></blockquote>
+</div>
+<div class="section" id="utility-functions">
+<h2>Utility Functions<a class="headerlink" href="#utility-functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="signet.command.build_signet.module_signatures">
+<tt class="descclassname">signet.command.build_signet.</tt><tt class="descname">module_signatures</tt><big>(</big><em>py_source</em>, <em>verbose=True</em><big>)</big><a class="reference internal" href="_modules/signet/command/build_signet.html#module_signatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#signet.command.build_signet.module_signatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scan <em>py_source</em> for dependencies, and return list of
+2-tuples [(hexdigest, modulename), ...], sorted by modulename.</p>
+<p>To see what signatures signet will use when building your loader:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">signet.command.build_signet</span> <span class="kn">import</span> <span class="n">module_signatures</span>
+<span class="k">for</span> <span class="nb">hash</span><span class="p">,</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">module_signatures</span><span class="p">(</span><span class="s">&#39;hello.py&#39;</span><span class="p">):</span>
+    <span class="k">print</span> <span class="nb">hash</span><span class="p">,</span> <span class="n">mod</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="signet.command.build_signet.generate_sigs_decl">
+<tt class="descclassname">signet.command.build_signet.</tt><tt class="descname">generate_sigs_decl</tt><big>(</big><em>py_source</em>, <em>verbose=True</em>, <em>excludes=None</em><big>)</big><a class="reference internal" href="_modules/signet/command/build_signet.html#generate_sigs_decl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#signet.command.build_signet.generate_sigs_decl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scan <em>py_source</em>, return SIGS c++ declaration as string. The 
+returned string will be formatted:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="k">const</span> <span class="n">Signature</span> <span class="n">SIGS</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">{</span><span class="s">&quot;hexdigest1&quot;</span><span class="p">,</span> <span class="s">&quot;module1&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">&quot;hexdigest2&quot;</span><span class="p">,</span> <span class="s">&quot;module2&quot;</span><span class="p">},</span>
+        <span class="p">};</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#"><tt class="docutils literal"><span class="pre">build_signet</span></tt> - Build a custom signet loader</a><ul>
+<li><a class="reference internal" href="#windows-resources">Windows Resources</a></li>
+<li><a class="reference internal" href="#examples">Examples</a></li>
+<li><a class="reference internal" href="#utility-functions">Utility Functions</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="signet.html"
+                        title="previous chapter">signet package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="signet.command.sign_code.html"
+                        title="next chapter"><tt class="docutils literal"><span class="pre">sign_code</span></tt> - Digially sign code</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/signet.command.build_signet.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="signet.command.sign_code.html" title="sign_code - Digially sign code"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="signet.html" title="signet package"
+             >previous</a> |</li>
+        <li><a href="index.html">signet  documentation</a> &raquo;</li>
+          <li><a href="signet.html" >signet package</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Author.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
