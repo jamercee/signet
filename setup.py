@@ -58,5 +58,10 @@ setup(
 
     test_suite      = 'nose.collector',
     setup_requires  = ['nose>=1.0'],
+
+    #ext_modules = [Extension("loader", 
+    #                sources=["signet/command/templates/loader.cpp"],
+    #                include_dirs=["signet/command/lib"],)],
+
     )
      
