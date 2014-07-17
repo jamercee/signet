@@ -71,11 +71,25 @@ PyObject* LoadFx;				/* import imp; LoadFx = imp.load_module */
 
 std::vector<PyObject*> Imports;	/* list of imported modules */
 
-#ifdef DEBUG
-int Debug = 1;
+// Enable debug logging during build by passing extra args, eg:
+// 		python setup.py build_signet --define LOGGING=10
+//
+// Levels are adapted from python's logging levels:
+// https://docs.python.org/2/library/logging.html#loggin-levels
+
+const int LOG_CRITICAL = 50;
+const int LOG_ERROR = 40;
+const int LOG_WARNING = 30;
+const int LOG_INFO = 20;
+const int LOG_DEBUG = 10;
+const int LOG_NOTSET = 0;
+
+#ifdef LOGGING
+int Debug = DEBUG;
 #else
-int Debug = 0;
+int Debug = LOG_WARNING;
 #endif
+
 
 // ---------------------------------------------------------------------------
 // FUNCTIONS
@@ -106,6 +120,28 @@ std::string basename(const char path[]) {
 	return pathname;
 	}
 
+/* return 1 if filename is a file, otherwise 0 */
+
+int isfile(const char filename[]) {
+
+	struct STAT st;
+	if (STAT(filename, &st) != 0) {
+		return 0;
+		}
+	return S_ISREG(st.st_mode) ? 1 : 0;
+	}
+
+/* return 1 if pathname is a dir, otherwise 0 */
+
+int isdir(const char pathname[]) {
+
+	struct STAT st;
+	if (STAT(pathname, &st) != 0) {
+		return 0;
+		}
+	return S_ISDIR(st.st_mode) ? 1 : 0;
+	}
+
 /* log python error to stderr */
 
 void python_err(const char fmt[], ...) {
@@ -122,9 +158,11 @@ void python_err(const char fmt[], ...) {
 	fprintf(stderr, "No python error ocurred.\n");
 	}
 
-void log_debug(const char fmt[], ...) {
+void log(int level, const char fmt[], ...) {
 
-	if (!Debug)
+	/* debug disabled? */
+
+	if (level < Debug)
 		return;
 
 	va_list args;
@@ -270,7 +308,7 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 
 	int rc = 0;
 
-	log_debug(">>> get_module_path %s\n", mod_name);
+	log(LOG_DEBUG, ">>> get_module_path %s\n", mod_name);
 
 	/* Iterate module heirarchy */
 
@@ -282,7 +320,7 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 		int plen = dot - mp;
 		std::string parent(mp, plen);
 
-		log_debug("\tfind M %s, P.__path__ %s\n", 
+		log(LOG_DEBUG, "\tfind M %s, P.__path__ %s\n", 
 				parent.c_str(), list_asstring(py_parent_path.get()).c_str());
 
 		if (find_module(parent.c_str(), py_parent_path.get(), &py_file, 
@@ -294,7 +332,7 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 		/* load_module P.M */
 
 		std::string heirarchy = std::string(mod_name, dot - mod_name);
-		log_debug("\tload_module P.M %s\n", heirarchy.c_str());
+		log(LOG_DEBUG, "\tload_module P.M %s\n", heirarchy.c_str());
 
 		if (load_module(heirarchy.c_str(), py_file, py_pathname, 
 					py_description)) {
@@ -304,7 +342,7 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 
 		/* save P.__path__ */
 
-		log_debug("\tsave P.__path__ %s\n", PyString_AsString(py_pathname));
+		log(LOG_DEBUG, "\tsave P.__path__ %s\n", PyString_AsString(py_pathname));
 
 		PyObject* py_plist = PyList_New(0);
 		if (py_plist == NULL) {
@@ -342,7 +380,7 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 
 	/* find M */
 
-	log_debug("\tlast find M %s, P.__path__ %s\n\n", 
+	log(LOG_DEBUG, "\tlast find M %s, P.__path__ %s\n\n", 
 			dot, list_asstring(py_parent_path.get()).c_str());
 
 	if (find_module(dot, py_parent_path.get(), &py_file, &py_pathname, 
@@ -355,12 +393,7 @@ int get_module_path(const char mod_name[], std::string& pathname) {
 
 	/* if dir, append package __init__.py */
 
-	struct STAT st;
-	if (STAT(pathname.c_str(), &st) != 0) {
-		fprintf(stderr, "stat %s: %s\n", pathname.c_str(), strerror(errno));
-		return -1;
-		}
-	if (S_ISDIR(st.st_mode)) {
+	if (isdir(pathname.c_str())) {
 		pathname += "/__init__.py";
 		}
 
@@ -421,7 +454,7 @@ int validate() {
 		if (get_module_path(sp->mod_name, pathname))
 			continue;
 
-		log_debug(">>> Found module %s -> %s\n", sp->mod_name, pathname.c_str());
+		log(LOG_INFO, ">>> Found module %s -> %s\n", sp->mod_name, pathname.c_str());
 
 		const char* hexdigest = sha1hexdigest(pathname.c_str());
 		if (hexdigest != NULL && strcmpi(hexdigest, sp->hexdigest) != 0) {
@@ -491,6 +524,69 @@ int parse_options(int argc, char* argv[]) {
 	return 0;
 	}
 
+/* optionally initialize virtualenv */
+
+int initialize_virtualenv() {
+
+	/* is vritualenv active? */
+
+	const char* venv = getenv("VIRTUAL_ENV");
+	if (venv == NULL)
+		return 0;
+
+	/* look for activate_this.py, posix first, then windows */
+
+	std::string activate_this = venv;
+	activate_this += "/bin/activate_this.py";
+
+	if (!isfile(activate_this.c_str())) {
+		activate_this = venv;
+		activate_this += "/Scripts/activate_this.py";
+		}
+
+	if (!isfile(activate_this.c_str())) {
+		return 0;
+		}
+
+	/* globals = { '__file__': 'path/to/activate_this.py' } */
+
+	PyPtr globals( PyDict_New() );
+	if (globals.get() == NULL) {
+		python_err("unable to create globals dict()\n");
+		return -1;
+		}
+	PyPtr py_activate_this( PyString_FromString(activate_this.c_str()) );
+	if (py_activate_this.get() == NULL) {
+		python_err("unable to initialize globals dict()\n");
+		return -1;
+		}
+
+	if (PyDict_SetItemString(globals.get(), "__file__", py_activate_this.get())) {
+		python_err("unable to assign to globals dict()\n");
+		return -1;
+		}
+
+	/* open activate_this */
+
+	FILE* fin = fopen(activate_this.c_str(), "r");
+	if (!fin) {
+		fprintf(stderr, "unable to open virtualenv script %s: %s\n", 
+				activate_this.c_str(), strerror(errno));
+		return -1;
+		}
+
+	PyObject* execfile = PyRun_File(fin, activate_this.c_str(), 
+							Py_file_input, globals.get(), NULL);
+	if (execfile == NULL) {
+		python_err("failed execfile()\n");
+		fclose(fin);
+		return -1;
+		}
+	Imports.push_back(execfile);
+
+	return 0;
+	}
+
 /* Initialize python, 
  * Validate module security
  * Cleanup
@@ -510,6 +606,11 @@ int run(int argc, char* argv[]) {
 		Py_Finalize();
 		return -1;
 		}
+
+	/* initialize virtualenv (if present) */
+
+	if (initialize_virtualenv())
+		return -1;
 
 	int rc = 0;
 
@@ -554,8 +655,12 @@ int run(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 
+	log(LOG_INFO, ">>> Validation step\n");
+
 	if (run(argc, argv))
 		return -1;
+
+	log(LOG_INFO, ">>> Run SCRIPT %s\n", SCRIPT);
 
 	/* initialize python */
 
@@ -570,7 +675,11 @@ int main(int argc, char* argv[]) {
 		return -1;
 		}
 
-	
+	/* initialize virtualenv (if present) */
+
+	if (initialize_virtualenv())
+		return -1;
+
 	int rc = 0;
 
 	std::string script = dirname(argv[0]) + SCRIPT;

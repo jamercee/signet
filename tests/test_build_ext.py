@@ -209,7 +209,7 @@ class TestBuildSignet(unittest.TestCase):
                 "   };\n"
                 "const char SCRIPT[]="";\n"
                 "const Signature SIGS[] = {{NULL,NULL}};\n"
-                "int TamperProtection = 2;\n"
+                "int TAMPER = 2;\n"
                 "int main() {\n"
                 "   printf(\"CUSTOM\\n\");\n"
                 "   return 0;\n"

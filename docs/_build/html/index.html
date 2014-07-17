@@ -1,0 +1,221 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Signet - Protect your users and customers from hackers &mdash; signet  documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="signet  documentation" href="#" />
+    <link rel="next" title="signet package" href="signet.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="signet.html" title="signet package"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">signet  documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="signet-protect-your-users-and-customers-from-hackers">
+<h1>Signet - Protect your users and customers from hackers<a class="headerlink" href="#signet-protect-your-users-and-customers-from-hackers" title="Permalink to this headline">¶</a></h1>
+<p><tt class="xref py py-mod docutils literal"><span class="pre">signet</span></tt> provides support for building and delivering tamper resistant python to
+your users and customers.</p>
+<p>Signet creates a custom python loader (aka: an executable binary) which you
+deliver with your script. On each invocation, the loader it will verify no
+tampering has ocurred before it runs the python script.</p>
+<p>Users have the confidence of knowing their scripts are safe and yet retain
+full access to the python source for code review and enhancement. And you know
+your users are running the right version of code.</p>
+<p>Signet is fully integrated with <a class="reference external" href="https://docs.python.org/2.7/library/distutils.html">distutils</a> to make the process of
+building and installing new python projects as simple and painless as possible.</p>
+<div class="section" id="how-does-it-work">
+<h2>How does it work?<a class="headerlink" href="#how-does-it-work" title="Permalink to this headline">¶</a></h2>
+<p>Signet relies on the strength of cryptographic hash to reliably detect file
+modifications.  Signet builds hashes of your script and all your script&#8217;s
+dependencies. These hashes are incorporated into a custom python loader which
+will handle re-verifying the hashes before it will agree to run your script.</p>
+<p>If your script or any of it&#8217;s dependencies are tampered with, the loader will
+emit an error and exit. If everything matches, the loader will run your script.</p>
+</div>
+<div class="section" id="example-usage">
+<h2>Example usage<a class="headerlink" href="#example-usage" title="Permalink to this headline">¶</a></h2>
+<p>For example, if you had a simple script <tt class="docutils literal"><span class="pre">hello.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">os</span>
+<span class="k">print</span><span class="p">(</span><span class="s">&#39;hello from </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And you deployed it with this simple <tt class="docutils literal"><span class="pre">setup.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">distutils.core</span> <span class="kn">import</span> <span class="n">setup</span><span class="p">,</span> <span class="n">Extension</span>
+<span class="kn">from</span> <span class="nn">signet.command.build_signet</span> <span class="kn">import</span> <span class="n">build_signet</span>
+
+<span class="n">setup</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;hello&#39;</span><span class="p">,</span>
+    <span class="n">cmdclass</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span><span class="p">:</span> <span class="n">build_signet</span><span class="p">,</span> <span class="p">},</span>
+    <span class="n">ext_modules</span> <span class="o">=</span> <span class="p">[</span><span class="n">Extension</span><span class="p">(</span><span class="s">&#39;hello&#39;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;hello.py&#39;</span><span class="p">])],</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>Build your loader:</p>
+<div class="highlight-python"><div class="highlight"><pre>python setup.py build_signet
+</pre></div>
+</div>
+<p>On Windows you&#8217;ll have <tt class="docutils literal"><span class="pre">hello.exe</span></tt> and on POSIX you&#8217;ll have <tt class="docutils literal"><span class="pre">hello</span></tt>.</p>
+<p>The signet system also provides facilities for code signing. You&#8217;ll need to
+modify <tt class="docutils literal"><span class="pre">setup.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">distutils.core</span> <span class="kn">import</span> <span class="n">setup</span><span class="p">,</span> <span class="n">Extension</span>
+<span class="kn">from</span> <span class="nn">signet.command.build_signet</span> <span class="kn">import</span> <span class="n">build_signet</span><span class="p">,</span> <span class="n">sign_code</span>
+
+<span class="n">setup</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;hello&#39;</span><span class="p">,</span>
+    <span class="n">cmdclass</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span><span class="p">:</span> <span class="n">build_signet</span><span class="p">,</span>
+                <span class="s">&#39;sign_code&#39;</span><span class="p">:</span> <span class="n">sign_code</span><span class="p">,</span>
+               <span class="p">},</span>
+    <span class="n">ext_modules</span> <span class="o">=</span> <span class="p">[</span><span class="n">Extension</span><span class="p">(</span><span class="s">&#39;hello&#39;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;hello.py&#39;</span><span class="p">])],</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>Build your loader:</p>
+<div class="highlight-python"><div class="highlight"><pre>python setup.py build_signet
+python setup.py sign_code --savedpassword --pfx-file {path-to-pfx}
+</pre></div>
+</div>
+</div>
+<div class="section" id="features">
+<h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Multiplatform: works under<ul>
+<li>Windows (32/64-bit)</li>
+<li>Linux</li>
+<li>FreeBSD</li>
+</ul>
+</li>
+<li>Integrated with Distutils</li>
+<li>Protection from tampering (SHA1 hashed content)</li>
+<li>On Windows<ul>
+<li>Provides code signing executables</li>
+<li>Loader performs PE executable verification</li>
+<li>Resource file support (for icons, company name &amp; version reporting)</li>
+</ul>
+</li>
+<li>Customizable python loader (c++)</li>
+<li>Unique process name<ul>
+<li>show <tt class="docutils literal"><span class="pre">hello</span></tt> rather than <tt class="docutils literal"><span class="pre">python</span> <span class="pre">hello.py</span></tt></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="contents">
+<h1>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="signet.html">signet package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="signet.command.build_signet.html"><tt class="docutils literal"><span class="pre">build_signet</span></tt> - Build a custom signet loader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="signet.command.sign_code.html"><tt class="docutils literal"><span class="pre">sign_code</span></tt> - Digially sign code</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Signet - Protect your users and customers from hackers</a><ul>
+<li><a class="reference internal" href="#how-does-it-work">How does it work?</a></li>
+<li><a class="reference internal" href="#example-usage">Example usage</a></li>
+<li><a class="reference internal" href="#features">Features</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#contents">Contents</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="signet.html"
+                        title="next chapter">signet package</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="signet.html" title="signet package"
+             >next</a> |</li>
+        <li><a href="#">signet  documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Author.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

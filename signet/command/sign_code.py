@@ -10,15 +10,21 @@ r""":mod:`sign_code` - Digially sign code
 The :mod:`signet.command.sign_code` module is responsible for digitally
 signing code. The module acts as a wrapper for the Windows SDK tool 
 `signtool <http://msdn.microsoft.com/en-us/library/8s9b9yaz%28v=vs.110%29.aspx>`_.
-It is designed to be integrated with :mod:`signet.command.build_signet`
+It is intended to be a companion to :mod:`signet.command.build_signet`, but can
+be used standalone to sign any executable code file.
+
+The signed code will be timestamped if your computer is connected to the
+internet. **sign_code** will randomly select a public timestamp server. If
+the first attempt to timestamp fails, it will cycle through it's list of
+servers, trying each up to 5 times before giving up.
 
 .. py:class:: sign_code
 
    .. py:method:: sign_code.run()
 
-   This is the main function responsible for generating your signet loader. It
-   is not expected to be invoked directly by your code, but installs itself
-   into the distutils.command heirarcy by nature of it's inheritance from
+   This is the main function responsible for digitally signing your code. It
+   is not expected to be invoked directly, but installs itself into the 
+   distutils.command heirarcy by nature of it's inheritance from
    `disutils.command.config <https://docs.python.org/2/distutils/apiref.html#module-distutils.core>`_ .
 
    **sign_code** makes available additional arguments you can specify
@@ -29,8 +35,9 @@ It is designed to be integrated with :mod:`signet.command.build_signet`
    +-----------------+---------------------------------------+-------------------------------+
    |  argument name  | value                                 | type                          |
    +=================+=======================================+===============================+
-   | *pfx-file*      | Path to PKCS#12 with signing cert.    | a string                      |
-   |                 | This setting is required.             |                               |
+   | *pfx-file*      | Path to PKCS#12 file with your signing| a string                      |
+   |                 | signing certificate. This setting is  |                               |
+   |                 | required.                             |                               |
    +-----------------+---------------------------------------+-------------------------------+
    | *password*      | Password associated with PKCS#12 file | a string                      |
    |                 | Either this or *savedpassword* is     |                               |
@@ -38,9 +45,10 @@ It is designed to be integrated with :mod:`signet.command.build_signet`
    +-----------------+---------------------------------------+-------------------------------+
    | *savepassword*  | Request **sign_tool** save password   | a boolean                     |
    |                 | in your private registry. The saved   |                               |
-   |                 | password is stored encrypted.         |                               |
+   |                 | password is stored encrypted (using   |                               |
+   |                 | windows DPAPI).                       |                               |
    +-----------------+---------------------------------------+-------------------------------+
-   | *resetpassword* | Deleted the stored password.          | a boolean                     |
+   | *resetpassword* | Delete stored password.               | a boolean                     |
    +-----------------+---------------------------------------+-------------------------------+
    | *digest*        | Digest to use when signing (default   | a string                      |
    |                 | is SHA1).                             |                               |
@@ -121,15 +129,20 @@ def get_winsdk_path():
     try:
         with _winreg.OpenKeyEx(_winreg.HKEY_LOCAL_MACHINE, 
                 "SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows") as key:
-            return _winreg.QueryValueEx(key, 'CurrentInstallFolder')[0]
+            pth = _winreg.QueryValueEx(key, 'CurrentInstallFolder')[0]
+            pp = []
+            for part in pth.split('\\'):
+                if len(part):
+                    pp.append(part)
+            return '\\'.join(pp)
     except (WindowsError, IndexError):
         raise DistutilsPlatformError('missing windows sdk registry entry: %s' 
                 % WINSDK_ERROR)
 
 def get_saved_password(name):
-    r"""Retrieve saved password (unencrypted). *name* is used to lookup a
-        password on this machine, which must be the same *name* used in
-        :py:func:`.save_password`."""
+    r"""Retrieve previously saved password. The password is returned 
+        unencrypted.  *name* is used to lookup a password on this machine,
+        which must be the same *name* used in :py:func:`.save_password`."""
 
     try:
         # Only import pywin32 dependency if user creates a project
@@ -149,7 +162,7 @@ def get_saved_password(name):
             enc = _winreg.QueryValue(key, name)
             enc =  base64.b64decode(enc)
 
-            # decrypt password using CRYPTPROECT_LOCAL_MACHINE
+            # decrypt password using DPAPI (CRYPTPROECT_LOCAL_MACHINE)
 
             return win32crypt.CryptUnprotectData(enc, 
                             None, None, None, 4)[1]
@@ -187,7 +200,7 @@ def save_password(name, password):
                 "module. You can download from "
                 "http://sourceforge.net/projects/pywin32")
 
-    # encrypt password using CRYPTPROECT_LOCAL_MACHINE
+    # encrypt password using DPAPI (CRYPTPROECT_LOCAL_MACHINE)
 
     enc = win32crypt.CryptProtectData(password, name,
                 None, None, None, 4)
@@ -203,7 +216,7 @@ def save_password(name, password):
     _winreg.SetValue(key, name, _winreg.REG_SZ, enc)
 
 class sign_code(config):
-    r"""digitally sign code"""
+    r"""Digitally sign code"""
 
     description = "digitally sign code"
     user_options = config.user_options
@@ -263,7 +276,7 @@ class sign_code(config):
         certname = os.path.basename(self.pfx_file)
         certname = os.path.splitext(certname)[0]
 
-        # did user asked to delete password?
+        # did user ask to delete password?
 
         if self.resetpassword:
             save_password(certname, None)
@@ -315,9 +328,11 @@ class sign_code(config):
 
 
     def next_timeserver(self):
-        r"""return next timeserver url, generator pattern"""
+        r"""Return next timeserver url, generator pattern. Each timeserver
+            url will be returned 5 times."""
 
-        # pick a random starting timestamp_url
+        # pick a random starting timestamp_url, to spread the load
+        # evenly against these public services.
 
         count = len(self.timestamp_urls)
         seed = random.randint(0, count - 1)
@@ -329,7 +344,7 @@ class sign_code(config):
             return self.timestamp_urls[ndx]
 
     def run(self):
-        r"""perform signing action"""
+        r"""Perform signing action"""
 
         if os.name != 'nt':
             log.error('sign_code only available on windows')
@@ -371,8 +386,9 @@ class sign_code(config):
                 if task.returncode:
                     log.info(stdout)
                     log.error(stderr)
-                else:
-                    log.debug(stdout)
 
+                # If we get here, code is signed
+
+                log.debug(stdout)
                 break
 
