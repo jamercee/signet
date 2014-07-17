@@ -12,7 +12,7 @@ and compiling signet loaders. It provides all the facilities you require
 for scanning your module's dependencies, and building a custom signet
 loader.
 
-The built loader will be installed '--inplace' with the source file.
+The built loader will be installed in the same directory as the script file.
 
 .. py:class:: build_signet
 
@@ -76,7 +76,7 @@ From a secuity perspective, the VESIONINFO resources are an important tool to
 verify the details of a binary.  **build_signet** will generate embedded
 VERSIONINFO resources for your loader when you enable the *mkresource* option
 in *setup.py*. Once enabled you need to specify the resource details for your
-loader. There are two mechanisms for specifying the required information. The
+project. There are two mechanisms for specifying the required information. The
 simplest is to add special variables to your script, which **build_signet** will
 scan and extract.
 
@@ -88,7 +88,9 @@ required and a seventh is optional. They are:
     +=======================+=========================================+
     | *__companyname__*     | REQUIRED: Your organization's name      |
     +-----------------------+-----------------------------------------+
-    | *__filedescription__* | REQUIRED: Version number of your script |
+    | *__fileversion__*     | REQUIRED: Version number of your script |
+    +-----------------------+-----------------------------------------+
+    | *__filedescription__* | REQUIRED: Simple file description.      |
     +-----------------------+-----------------------------------------+
     | *__legalcopyright__*  | REQUIRED: The copyright notice that     |
     |                       | applies to your script.                 |
@@ -115,7 +117,7 @@ The second mechanism to specify required resources is to add them to
         maintainer = "Acme, Inc",       # mapped to __companyname__
         description = "Cheese Grater",  # mapped to __filedescription__
         license = 'BSD'                 # mapped to __leaglcopyright__
-        version = '1.0.2'               # mapped to __fileversion__ and __product__version
+        version = '1.0.2'               # mapped to __fileversion__ and __productversion__
         ...
 
 You can mix and match mechanism 1 and 2, specifying some settings in your
@@ -158,7 +160,7 @@ An example to create Windows resource file, ``hello.py``::
         ext_modules = [Extension('hello', sources=['hello.py'])],
         )
 
-To generate the Windows resources, use *--mkresource*, eg:
+To generate the Windows resources:
 
     ``python setup.py build_signet --mkresource``
 
