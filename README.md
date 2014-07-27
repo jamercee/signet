@@ -3,7 +3,7 @@ Signet - Protect your users and customers from hackers
 
 FULL HTML Documentation: <http://jamercee.github.io/signet/>
 
-signet provides support for building and delivering tamper resistant
+Signet provides support for building and delivering tamper resistant
 python to your users and customers.
 
 Signet creates a custom python loader (aka: an executable binary) which
@@ -73,6 +73,17 @@ Build your loader:
     python setup.py build_signet
     python setup.py sign_code --savedpassword --pfx-file {path-to-pfx}
 
+Install
+-------
+
+Signet is hosted on github at <https://github.com/jamercee/signet>
+
+Installation is simplest using git:
+
+    git clone https://github.com/jamercee/signet
+    cd signet
+    python setup.py install
+
 Features
 --------
 
@@ -91,20 +102,22 @@ Features
 -   Unique process name
     -   show `hello` rather than `python hello.py`
 
-### What is a signet?
+What is a signet?
+-----------------
 
 Signet took it's name from the ancient practice of sealing documents by
 pressing personal jewlery into hot wax. This uniquely identified the
 documents origin. The personal jewley usually took the form a rign worn
 by the sender --a **Signet Ring**.
 
-### Project motivation
+Project motivation
+------------------
 
-Our firm, Carroll-Net provides a commercial multiplatform backup
-application written in python, delvered open source. By delivering the
-source code to our application, clients can audit the entire code base
-to ensure it meets their needs, and even make changes to suit their
-individual tastes, and enterprise requirements.
+[Carroll-Net](http://carroll.net) provides a commercial multiplatform
+backup application written in python, delvered open source. By
+delivering the source code to our application, clients can audit the
+entire code base to ensure it meets their needs, and even make changes
+to suit their individual tastes, and enterprise requirements.
 
 But distributing commercial applications in python introduces new
 security challenges. Hackers who become aware of our large installation
@@ -118,7 +131,8 @@ The security challenge is therefore to protect our clients from hackers
 while still providing full python source code. The solution we developed
 is to deploy our application with a custom python loader.
 
-### What is a python loader?
+What is a python loader?
+------------------------
 
 Python is an interpreted language. To run your python applications
 involves reading your source code, compiling it to python op-codes, then
@@ -135,7 +149,8 @@ comprehensive documentation on how you can create your own loader and
 replace the default one provided with your system. [Read
 more](https://docs.python.org/2/extending/embedding.html)
 
-### Solve the python security challenge
+Solve the python security challenge
+-----------------------------------
 
 A custom loader can take steps to validate your application before
 running it. Correctly implemented, it would detect tampering and then
@@ -145,13 +160,14 @@ original version. But at a minimum, it will emit an error and refuse to
 run. The beauty of the custom loader approach is there is no limit to
 the security you choose to implement --you have complete control.
 
-### The Signet Loader
+The Signet Loader
+-----------------
 
-Carroll-Net has created a custom python loader called signet. It is
-fully integrated into distutils to make the process of building your own
-custom loader as simple and painless as possible. Also, by using
-distutils, it guarantees your clients will have a quick no-nonsense
-installation experience when they choose your software.
+[Carroll-Net](http://carroll.net) has created a custom python loader
+called signet. It is fully integrated into distutils to make the process
+of building your own custom loader as simple and painless as possible.
+Also, by using distutils, it guarantees your clients will have a quick
+no-nonsense installation experience when they choose your software.
 
 The signet approach is simple. Your python app is scanned and a sha1
 hash of it's content is calculated. Signet then recursively scans its
@@ -173,13 +189,14 @@ would create hello). This is the program your clients would run. But the
 logic for your application would still be within hello.py, which means
 your client retains full access to your source.
 
-### Code signing
+Code signing
+------------
 
-Carroll-Net delivers our backup application as a multiplatform system
-(windows, unix, linux, freebsd, etc). If it's a platform that can run
-python, we fully support it for backup. But we also want to take
-advantage of any extra security available to us on each platform. This
-is the case with code signing available on Windows.
+[Carroll-Net](http://carroll.net) delivers our backup application as a
+multiplatform system (windows, unix, linux, freebsd, etc). If it's a
+platform that can run python, we fully support it for backup. But we
+also want to take advantage of any extra security available to us on
+each platform. This is the case with code signing available on Windows.
 
 Windows has had code signing available for many years. With code
 signing, a software developer can add a signature to his software that
@@ -196,7 +213,8 @@ signet cannot detect if the signet loader itself has been tampered with
 The signet system provides widows code signing for your projects you
 deploy to windows.
 
-### Signet code signing
+Signet code signing
+-------------------
 
 To use code signing with your windows projects will require you purchase
 a code signing certificate. These certificates can be purchased form one
@@ -224,7 +242,8 @@ confidence of knowing they came from you. Signet provides all the tools
 you need to automatically generate Resource Files and to embed them in
 your custom loader.
 
-### Extra Perks
+Extra Perks
+-----------
 
 One downside of deploying python based solutions is the ambiguous
 process list presented to your customers. When your applications are
@@ -242,7 +261,8 @@ with your application. Administrative tools such as process explorer and
 task manager will render these icons adjacent to your running instances,
 further enhancing your clients admin experience.
 
-### Where to buy code signing certificates
+Where to buy code signing certificates
+--------------------------------------
 
 Comodo - <https://www.instantssl.com/code-signing/index.html>
 
@@ -256,11 +276,12 @@ to link to their commercial offerings. If you'd prefer other choices, a
 quick web search for 'Code Signing Certificate' will yield dozens of
 options.
 
-### License
+License
+-------
 
 Signet is distributed as licensed under the 3-clause BSD License:
 
-    Copyright (c) 2014, Carroll-Net, Inc.
+    Copyright (c) 2014, Carroll-Net, Inc. (http://carroll.net)
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without

@@ -3,7 +3,7 @@ Signet - Protect your users and customers from hackers
 
 FULL HTML Documentation: http://jamercee.github.io/signet/
 
-:mod:`signet` provides support for building and delivering tamper resistant python to
+Signet provides support for building and delivering tamper resistant python to
 your users and customers.
 
 Signet creates a custom python loader (aka: an executable binary) which you
@@ -17,7 +17,6 @@ your users are running the right version of code.
 Signet is fully integrated with `distutils <https://docs.python.org/2.7/library/distutils.html>`_ to make the process of
 building and installing new python projects as simple and painless as possible.
 
------------------
 How does it work?
 -----------------
 
@@ -29,7 +28,6 @@ will handle re-verifying the hashes before it will agree to run your script.
 If your script or any of it's dependencies are tampered with, the loader will
 emit an error and exit. If everything matches, the loader will run your script.
 
--------------
 Example usage
 -------------
 
@@ -71,7 +69,18 @@ Build your loader::
     python setup.py build_signet
     python setup.py sign_code --savedpassword --pfx-file {path-to-pfx}
 
---------
+
+Install
+-------
+
+Signet is hosted on github at https://github.com/jamercee/signet
+
+Installation is simplest using git::
+
+    git clone https://github.com/jamercee/signet
+    cd signet
+    python setup.py install
+
 Features
 --------
 
@@ -107,7 +116,7 @@ a **Signet Ring**.
 Project motivation
 ------------------
 
-Our firm, Carroll-Net provides a commercial multiplatform backup application
+`Carroll-Net <http://carroll.net>`_ provides a commercial multiplatform backup application
 written in python, delvered open source. By delivering the source code to our
 application, clients can audit the entire code base to ensure it meets their
 needs, and even make changes to suit their individual tastes, and enterprise
@@ -154,7 +163,7 @@ you have complete control.
 The Signet Loader
 -----------------
 
-Carroll-Net has created a custom python loader called signet. It is fully
+`Carroll-Net <http://carroll.net>`_ has created a custom python loader called signet. It is fully
 integrated into distutils to make the process of building your own custom
 loader as simple and painless as possible. Also, by using distutils, it
 guarantees your clients will have a quick no-nonsense installation experience
@@ -182,7 +191,7 @@ access to your source.
 Code signing
 ------------
 
-Carroll-Net delivers our backup application as a multiplatform system (windows,
+`Carroll-Net <http://carroll.net>`_ delivers our backup application as a multiplatform system (windows,
 unix, linux, freebsd, etc). If it's a platform that can run python, we fully
 support it for backup. But we also want to take advantage of any extra security
 available to us on each platform. This is the case with code signing available on
@@ -266,7 +275,7 @@ License
 
 Signet is distributed as licensed under the 3-clause BSD License::
 
-    Copyright (c) 2014, Carroll-Net, Inc.
+    Copyright (c) 2014, Carroll-Net, Inc. (http://carroll.net)
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without

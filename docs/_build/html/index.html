@@ -51,7 +51,7 @@
   <div class="section" id="signet-protect-your-users-and-customers-from-hackers">
 <h1>Signet - Protect your users and customers from hackers<a class="headerlink" href="#signet-protect-your-users-and-customers-from-hackers" title="Permalink to this headline">¶</a></h1>
 <p>FULL HTML Documentation: <a class="reference external" href="http://jamercee.github.io/signet/">http://jamercee.github.io/signet/</a></p>
-<p><tt class="xref py py-mod docutils literal"><span class="pre">signet</span></tt> provides support for building and delivering tamper resistant python to
+<p>Signet provides support for building and delivering tamper resistant python to
 your users and customers.</p>
 <p>Signet creates a custom python loader (aka: an executable binary) which you
 deliver with your script. On each invocation, the loader it will verify no
@@ -110,6 +110,16 @@ python setup.py sign_code --savedpassword --pfx-file {path-to-pfx}
 </pre></div>
 </div>
 </div>
+<div class="section" id="install">
+<h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<p>Signet is hosted on github at <a class="reference external" href="https://github.com/jamercee/signet">https://github.com/jamercee/signet</a></p>
+<p>Installation is simplest using git:</p>
+<div class="highlight-python"><div class="highlight"><pre>git clone https://github.com/jamercee/signet
+cd signet
+python setup.py install
+</pre></div>
+</div>
+</div>
 <div class="section" id="features">
 <h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
@@ -134,16 +144,17 @@ python setup.py sign_code --savedpassword --pfx-file {path-to-pfx}
 </ul>
 </li>
 </ul>
+</div>
 <div class="section" id="what-is-a-signet">
-<h3>What is a signet?<a class="headerlink" href="#what-is-a-signet" title="Permalink to this headline">¶</a></h3>
+<h2>What is a signet?<a class="headerlink" href="#what-is-a-signet" title="Permalink to this headline">¶</a></h2>
 <p>Signet took it&#8217;s name from the ancient practice of sealing documents by
 pressing personal jewlery into hot wax. This uniquely identified the documents
 origin. The personal jewley usually took the form a rign worn by the sender &#8211;
 a <strong>Signet Ring</strong>.</p>
 </div>
 <div class="section" id="project-motivation">
-<h3>Project motivation<a class="headerlink" href="#project-motivation" title="Permalink to this headline">¶</a></h3>
-<p>Our firm, Carroll-Net provides a commercial multiplatform backup application
+<h2>Project motivation<a class="headerlink" href="#project-motivation" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://carroll.net">Carroll-Net</a> provides a commercial multiplatform backup application
 written in python, delvered open source. By delivering the source code to our
 application, clients can audit the entire code base to ensure it meets their
 needs, and even make changes to suit their individual tastes, and enterprise
@@ -159,7 +170,7 @@ still providing full python source code. The solution we developed is to deploy
 our application with a custom python loader.</p>
 </div>
 <div class="section" id="what-is-a-python-loader">
-<h3>What is a python loader?<a class="headerlink" href="#what-is-a-python-loader" title="Permalink to this headline">¶</a></h3>
+<h2>What is a python loader?<a class="headerlink" href="#what-is-a-python-loader" title="Permalink to this headline">¶</a></h2>
 <p>Python is an interpreted language. To run your python applications involves
 reading your source code, compiling it to python op-codes, then passing this
 compiled code to the python interpreter for execution.</p>
@@ -172,7 +183,7 @@ how you can create your own loader and replace the default one provided with
 your system. <a class="reference external" href="https://docs.python.org/2/extending/embedding.html">Read more</a></p>
 </div>
 <div class="section" id="solve-the-python-security-challenge">
-<h3>Solve the python security challenge<a class="headerlink" href="#solve-the-python-security-challenge" title="Permalink to this headline">¶</a></h3>
+<h2>Solve the python security challenge<a class="headerlink" href="#solve-the-python-security-challenge" title="Permalink to this headline">¶</a></h2>
 <p>A custom loader can take steps to validate your application before running it.
 Correctly implemented, it would detect tampering and then take appropriate
 measures to counter the tampering. In an ideal world, it could undo the
@@ -182,8 +193,8 @@ loader approach is there is no limit to the security you choose to implement &#8
 you have complete control.</p>
 </div>
 <div class="section" id="the-signet-loader">
-<h3>The Signet Loader<a class="headerlink" href="#the-signet-loader" title="Permalink to this headline">¶</a></h3>
-<p>Carroll-Net has created a custom python loader called signet. It is fully
+<h2>The Signet Loader<a class="headerlink" href="#the-signet-loader" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://carroll.net">Carroll-Net</a> has created a custom python loader called signet. It is fully
 integrated into distutils to make the process of building your own custom
 loader as simple and painless as possible. Also, by using distutils, it
 guarantees your clients will have a quick no-nonsense installation experience
@@ -206,8 +217,8 @@ application would still be within hello.py, which means your client retains full
 access to your source.</p>
 </div>
 <div class="section" id="code-signing">
-<h3>Code signing<a class="headerlink" href="#code-signing" title="Permalink to this headline">¶</a></h3>
-<p>Carroll-Net delivers our backup application as a multiplatform system (windows,
+<h2>Code signing<a class="headerlink" href="#code-signing" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://carroll.net">Carroll-Net</a> delivers our backup application as a multiplatform system (windows,
 unix, linux, freebsd, etc). If it&#8217;s a platform that can run python, we fully
 support it for backup. But we also want to take advantage of any extra security
 available to us on each platform. This is the case with code signing available on
@@ -225,7 +236,7 @@ was changed).</p>
 windows.</p>
 </div>
 <div class="section" id="signet-code-signing">
-<h3>Signet code signing<a class="headerlink" href="#signet-code-signing" title="Permalink to this headline">¶</a></h3>
+<h2>Signet code signing<a class="headerlink" href="#signet-code-signing" title="Permalink to this headline">¶</a></h2>
 <p>To use code signing with your windows projects will require you purchase a code
 signing certificate. These certificates can be purchased form one of a half
 dozen or so commercial entities. You&#8217;ll find
@@ -247,7 +258,7 @@ they came from you.  Signet provides all the tools you need to automatically
 generate Resource Files and to embed them in your custom loader.</p>
 </div>
 <div class="section" id="extra-perks">
-<h3>Extra Perks<a class="headerlink" href="#extra-perks" title="Permalink to this headline">¶</a></h3>
+<h2>Extra Perks<a class="headerlink" href="#extra-perks" title="Permalink to this headline">¶</a></h2>
 <p>One downside of deploying python based solutions is the ambiguous process list
 presented to your customers. When your applications are running, your customers
 only see another instance of python running. To determine the actual program
@@ -262,7 +273,7 @@ manager will render these icons adjacent to your running instances, further
 enhancing your clients admin experience.</p>
 </div>
 <div class="section" id="where-to-buy-code-signing-certificates">
-<h3>Where to buy code signing certificates<a class="headerlink" href="#where-to-buy-code-signing-certificates" title="Permalink to this headline">¶</a></h3>
+<h2>Where to buy code signing certificates<a class="headerlink" href="#where-to-buy-code-signing-certificates" title="Permalink to this headline">¶</a></h2>
 <p>Comodo - <a class="reference external" href="https://www.instantssl.com/code-signing/index.html">https://www.instantssl.com/code-signing/index.html</a></p>
 <p>Global Sign - <a class="reference external" href="https://www.globalsign.com/">https://www.globalsign.com/</a></p>
 <p>Symatec - <a class="reference external" href="http://www.symantec.com/code-signing">http://www.symantec.com/code-signing</a></p>
@@ -272,9 +283,9 @@ their commercial offerings.  If you&#8217;d prefer other choices, a quick web se
 for &#8216;Code Signing Certificate&#8217; will yield dozens of options.</p>
 </div>
 <div class="section" id="license">
-<h3>License<a class="headerlink" href="#license" title="Permalink to this headline">¶</a></h3>
+<h2>License<a class="headerlink" href="#license" title="Permalink to this headline">¶</a></h2>
 <p>Signet is distributed as licensed under the 3-clause BSD License:</p>
-<div class="highlight-python"><div class="highlight"><pre>Copyright (c) 2014, Carroll-Net, Inc.
+<div class="highlight-python"><div class="highlight"><pre>Copyright (c) 2014, Carroll-Net, Inc. (http://carroll.net)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -299,7 +310,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 </pre></div>
-</div>
 </div>
 </div>
 </div>
@@ -334,7 +344,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <li><a class="reference internal" href="#">Signet - Protect your users and customers from hackers</a><ul>
 <li><a class="reference internal" href="#how-does-it-work">How does it work?</a></li>
 <li><a class="reference internal" href="#example-usage">Example usage</a></li>
-<li><a class="reference internal" href="#features">Features</a><ul>
+<li><a class="reference internal" href="#install">Install</a></li>
+<li><a class="reference internal" href="#features">Features</a></li>
 <li><a class="reference internal" href="#what-is-a-signet">What is a signet?</a></li>
 <li><a class="reference internal" href="#project-motivation">Project motivation</a></li>
 <li><a class="reference internal" href="#what-is-a-python-loader">What is a python loader?</a></li>
@@ -345,8 +356,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <li><a class="reference internal" href="#extra-perks">Extra Perks</a></li>
 <li><a class="reference internal" href="#where-to-buy-code-signing-certificates">Where to buy code signing certificates</a></li>
 <li><a class="reference internal" href="#license">License</a></li>
-</ul>
-</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#contents">Contents</a></li>
