@@ -77,9 +77,7 @@ publish:
 		  echo "Run 'git commit ..' before publish"; \
 		  exit -1; \
 	fi
-donotuse:
 	git checkout gh-pages
-	exit -1
 	git rm -r .
 	git checkout master -- docs/_build/html
 	git mv docs/_build/html/* .
