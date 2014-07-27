@@ -1,3 +1,0 @@
-This directory contains static (such as icon's) used by
-signet.build_ext
-
