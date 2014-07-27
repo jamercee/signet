@@ -178,6 +178,10 @@ def save_password(name, password):
         password associated with *name*. Set *password* to None, to delete
         value from the registry.
     
+        **TIP** I recommend you use the certificate expiration date as the name.
+        Remebering when a cert will expire is a maintenance headache, and using
+        this as the name will help with this chore.
+
         Example use::
 
             >>> from signet.command.sign_code import *
@@ -185,6 +189,7 @@ def save_password(name, password):
             >>> get_saved_password('Cert-1-Expires-2014-11')
             'abc123'
         """
+
     if password is None:
         _winreg.DeleteKey(_winreg.HKEY_CURRENT_USER,
                 "SOFTWARE\\signet\\%s" % name)
