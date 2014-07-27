@@ -6,7 +6,7 @@ declarations:
 
     const char SCRIPT = "name-of-script";
     const Signature SIGS = { {"hexdigest", "modname"},...};
-    int TamperProtection = 2;
+    int TAMPER = 2;
 
 Declarations must start in column 1 (don't get too frisky with whitespace
 formatting as the parser logic is quite simple).

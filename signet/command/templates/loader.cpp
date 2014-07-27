@@ -211,7 +211,7 @@ std::string list_asstring(PyObject* py_list) {
 char* sha1hexdigest(const char fname[]) {
 
 	Sha1Context ctx;
-    Sha1Initialise(&ctx);
+	Sha1Initialise(&ctx);
 
 	FILE* fin = fopen(fname, "rb");
 	if (fin == NULL) {
