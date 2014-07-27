@@ -228,6 +228,10 @@
 <span class="sd">        password associated with *name*. Set *password* to None, to delete</span>
 <span class="sd">        value from the registry.</span>
 <span class="sd">    </span>
+<span class="sd">        **TIP** I recommend you use the certificate expiration date as the name.</span>
+<span class="sd">        Remebering when a cert will expire is a maintenance headache, and using</span>
+<span class="sd">        this as the name will help with this chore.</span>
+
 <span class="sd">        Example use::</span>
 
 <span class="sd">            &gt;&gt;&gt; from signet.command.sign_code import *</span>
@@ -235,6 +239,7 @@
 <span class="sd">            &gt;&gt;&gt; get_saved_password(&#39;Cert-1-Expires-2014-11&#39;)</span>
 <span class="sd">            &#39;abc123&#39;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
     <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
         <span class="n">_winreg</span><span class="o">.</span><span class="n">DeleteKey</span><span class="p">(</span><span class="n">_winreg</span><span class="o">.</span><span class="n">HKEY_CURRENT_USER</span><span class="p">,</span>
                 <span class="s">&quot;SOFTWARE</span><span class="se">\\</span><span class="s">signet</span><span class="se">\\</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>

@@ -1,14 +1,14 @@
 Signet - Protect your users and customers from hackers
-======================================================
+******************************************************
 
 FULL HTML Documentation: http://jamercee.github.io/signet/
 
 Signet provides support for building and delivering tamper resistant python to
 your users and customers.
 
-Signet creates a custom python loader (aka: an executable binary) which you
-deliver with your script. On each invocation, the loader it will verify no
-tampering has ocurred before it runs the python script.
+Signet creates a custom python loader which you deliver with your script. On
+each invocation, the loader it will verify no tampering has ocurred before it
+runs the python script.
 
 Users have the confidence of knowing their scripts are safe and yet retain
 full access to the python source for code review and enhancement. And you know
@@ -18,7 +18,7 @@ Signet is fully integrated with `distutils <https://docs.python.org/2.7/library/
 building and installing new python projects as simple and painless as possible.
 
 How does it work?
------------------
+=================
 
 Signet relies on the strength of cryptographic hash to reliably detect file
 modifications.  Signet builds hashes of your script and all your script's
@@ -29,7 +29,7 @@ If your script or any of it's dependencies are tampered with, the loader will
 emit an error and exit. If everything matches, the loader will run your script.
 
 Example usage
--------------
+=============
 
 For example, if you had a simple script ``hello.py``::
 
@@ -70,8 +70,8 @@ Build your loader::
     python setup.py sign_code --savedpassword --pfx-file {path-to-pfx}
 
 
-Install
--------
+Installing Signet
+=================
 
 Signet is hosted on github at https://github.com/jamercee/signet
 
@@ -82,7 +82,7 @@ Installation is simplest using git::
     python setup.py install
 
 Features
---------
+========
 
 * Multiplatform: works under
 
@@ -104,8 +104,11 @@ Features
 
   * show ``hello`` rather than ``python hello.py``
 
-What is a signet?
------------------
+Project Background
+==================
+
+What is a *signet*?
+-------------------
 
 Signet took it's name from the ancient practice of sealing documents by
 pressing personal jewlery into hot wax. This uniquely identified the documents
@@ -113,20 +116,20 @@ origin. The personal jewley usually took the form a rign worn by the sender --
 a **Signet Ring**.
 
 
-Project motivation
+Project Motivation
 ------------------
 
-`Carroll-Net <http://carroll.net>`_ provides a commercial multiplatform backup application
-written in python, delvered open source. By delivering the source code to our
-application, clients can audit the entire code base to ensure it meets their
+`Carroll-Net <http://carroll.net>`_ provides a commercial multiplatform backup
+application written in python. By delivering the source code to our
+clients, they can audit the entire code base to ensure it meets their
 needs, and even make changes to suit their individual tastes, and enterprise
 requirements.
 
 But distributing commercial applications in python introduces new security
-challenges. Hackers who become aware of our large installation base could
-seek to inject changes into our application to assist in their criminal
-activity. To make matters worse, backup software requires full admin privileges
-to be able to to do its job. Hackers who successfully inject new code into this
+challenges. Hackers who become aware of our large installation base could seek
+to inject changes into our application to assist in their criminal activity. To
+make matters worse, backup software requires full admin privileges to be able
+to to do its job. Hackers who successfully inject new code into this
 environment would have unfettered control over their victim.
 
 The security challenge is therefore to protect our clients from hackers  while
@@ -163,19 +166,19 @@ you have complete control.
 The Signet Loader
 -----------------
 
-`Carroll-Net <http://carroll.net>`_ has created a custom python loader called signet. It is fully
-integrated into distutils to make the process of building your own custom
-loader as simple and painless as possible. Also, by using distutils, it
-guarantees your clients will have a quick no-nonsense installation experience
-when they choose your software.
+`Carroll-Net <http://carroll.net>`_ has created a custom python loader called
+:mod:`signet <signet.command.build_signet>`. It is fully integrated into distutils to make the process of building
+your own custom loader as simple and painless as possible. Also, by using
+distutils, it guarantees your clients will have a quick no-nonsense
+installation experience when they choose your software.
 
 The signet approach is simple. Your python app is scanned and a sha1 hash of
 it's content is calculated. Signet then recursively scans its dependencies and
-calculates sha1 hashes for each of them. These hashes are then incorporated into 
-a loader which is compiled to an executable program which will act as your
+calculates sha1 hashes for each of them. These hashes are then incorporated
+into a loader which is compiled to an executable program which will act as your
 application's loader.
 
-You then deliver these two files to your client; your newly built loader and 
+You then deliver these two files to your client; your newly built loader and
 your application with instructions they should run the loader. When invoked, it
 will recalculate the sha1 hashes for your app and it's dependencies to confirm
 they match the pre-calculated values. If they match, execution is transferred
@@ -185,17 +188,17 @@ terminates, without ever running any of the tampered coded.
 For example, say you had application called *hello.py*. On windows, Signet
 would create a loader for this app called hello.exe (on linux it would create
 hello). This is the program your clients would run.  But the logic for your
-application would still be within hello.py, which means your client retains full
-access to your source.
+application would still be within hello.py, which means your client retains
+full access to your source.
 
 Code signing
 ------------
 
-`Carroll-Net <http://carroll.net>`_ delivers our backup application as a multiplatform system (windows,
-unix, linux, freebsd, etc). If it's a platform that can run python, we fully
-support it for backup. But we also want to take advantage of any extra security
-available to us on each platform. This is the case with code signing available on
-Windows.
+`Carroll-Net <http://carroll.net>`_ delivers our backup application as a
+multiplatform system (windows, unix, linux, freebsd, etc). If it's a platform
+that can run python, we fully support it for backup. But we also want to take
+advantage of any extra security available to us on each platform. This is the
+case with code signing available on Windows.
 
 Windows has had code signing available for many years. With code signing, a
 software developer can add a signature to his software that cannot be faked.
@@ -208,28 +211,29 @@ your script or it's dependencies have been tampered with, signet cannot detect
 if the signet loader itself has been tampered with (eg: if the hello.exe file
 was changed). 
 
-The signet system provides widows code signing for your projects you deploy to
-windows.
+The signet system provides widows :mod:`code signing <signet.command.sign_code>` 
+for your projects you deploy to windows.
 
-Signet code signing
--------------------
+Code signing with Signet
+------------------------
 
-To use code signing with your windows projects will require you purchase a code
-signing certificate. These certificates can be purchased form one of a half
-dozen or so commercial entities. You'll find
-a list of some of these vendors at the end of this page. 
+To use :mod:`code signing <signet.command.sign_code>` with your windows
+projects will require you purchase a code signing certificate. These
+certificates can be purchased form one of a half dozen or so commercial
+entities. You'll find a list of some of these vendors at the end of this page. 
 
 Once you've purchased your certificate, you'll need to convert this file to a
-Personal Information Exchange File (also referred to as a `PKCS#12 file <https://en.wikipedia.org/wiki/PKCS12>`_ ).
-The extension is expected to be \*.pfx.  The vendor who provides your cert
-should have directions on how to convert their cert to this format. 
+Personal Information Exchange File (also referred to as a 
+`PKCS#12 file <https://en.wikipedia.org/wiki/PKCS12>`_ ), with a file extension
+of \*.pfx. The vendor who provides your cert will have directions on how to
+convert their cert to this format. 
 
 Signet will need to know the full path to where you store your \*.pfx file. It
 will also need to know the password you choose to unlock and use your pfx file.
-Signet will offer you an option to save your password (encrypted of course) to make
-repeated edit-compile-build cylces faster.
+Signet will offer you the option to save your password (encrypted of course) to
+make repeated edit-compile-build cylces faster.
 
-Code signing usaged introduces an interrelated topic, Windows Resource Files.
+Code signing usage introduces an interrelated topic, Windows Resource Files.
 While not strictly required, they are strongly recommended when offering secure
 computing solutions to your clients. 
 
@@ -246,34 +250,33 @@ presented to your customers. When your applications are running, your customers
 only see another instance of python running. To determine the actual program
 name, a client needs to expand the process list to display the command line.
 
-A custom loader does not suffer form this. The loader is the process
-name displayed in the process list. In the example we cited above, your
+A custom loader does not suffer form this. The loader is the process name
+displayed in the process list. In the example we used in this document, your
 customer would see *hello.exe*. This makes for simpler system administration
 for your clients.
 
-Additionally, signet code signing enables you to associate a custom icon
-with your application. Administrative tools such as process explorer and task
-manager will render these icons adjacent to your running instances, further
-enhancing your clients admin experience.
+Additionally, signet :mod:`code signing <signet.command.sign_code>` enables you
+to associate a custom icon with your application. Administrative tools such as
+process explorer and task manager will render these icons adjacent to your
+running instances, further enhancing your clients admin experience.
 
-Where to buy code signing certificates
---------------------------------------
+Commercial certificates vendors
+-------------------------------
 
-Comodo - https://www.instantssl.com/code-signing/index.html
+There are literally dozens of companies offering to sell code signing certificates.
+We're only listing three here (a web search will find other options). We've listed
+these three for a specific reason. These three companies offer free timestamp
+servers for public use. The :mod:`code signing <signet.command.sign_code>`
+system uses them, so it seemed only fair to highlight their offerings.
 
-Global Sign - https://www.globalsign.com/
-
-Symatec - http://www.symantec.com/code-signing
-
-We've listed these three, because the signet code signing infrastructure will
-use timestamp servers run by these firms, and it only seemed fair to link to
-their commercial offerings.  If you'd prefer other choices, a quick web search
-for 'Code Signing Certificate' will yield dozens of options.
+* Comodo - https://www.instantssl.com/code-signing/index.html
+* Global Sign - https://www.globalsign.com/
+* Symatec - http://www.symantec.com/code-signing
 
 License
 -------
 
-Signet is distributed as licensed under the 3-clause BSD License::
+Signet is licensed under the 3-clause BSD License::
 
     Copyright (c) 2014, Carroll-Net, Inc. (http://carroll.net)
     All rights reserved.
