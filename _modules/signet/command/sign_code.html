@@ -1,0 +1,487 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>signet.command.sign_code &mdash; signet  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="signet  documentation" href="../../../index.html" />
+    <link rel="up" title="signet.command" href="../command.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">signet  documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../command.html" accesskey="U">signet.command</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for signet.command.sign_code</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python2.7</span>
+<span class="c"># pylint: disable=C0301</span>
+<span class="sd">r&quot;&quot;&quot;:mod:`sign_code` - Digially sign code</span>
+<span class="sd">=========================================</span>
+
+<span class="sd">.. module:: signet.command.sign_code</span>
+<span class="sd">   :synopsis: Digitially sign executable code files</span>
+<span class="sd">.. moduleauthor:: Jim Carroll &lt;jim@carroll.com&gt;</span>
+
+<span class="sd">The :mod:`signet.command.sign_code` module is responsible for digitally</span>
+<span class="sd">signing code. The module acts as a wrapper for the Windows SDK tool </span>
+<span class="sd">`signtool &lt;http://msdn.microsoft.com/en-us/library/8s9b9yaz%28v=vs.110%29.aspx&gt;`_.</span>
+<span class="sd">It is intended to be a companion to :mod:`signet.command.build_signet`, but can</span>
+<span class="sd">be used standalone to sign any executable code file.</span>
+
+<span class="sd">The signed code will be timestamped if your computer is connected to the</span>
+<span class="sd">internet. **sign_code** will randomly select a public timestamp server. If</span>
+<span class="sd">the first attempt to timestamp fails, it will cycle through it&#39;s list of</span>
+<span class="sd">servers, trying each up to 5 times before giving up.</span>
+
+<span class="sd">.. py:class:: sign_code</span>
+
+<span class="sd">   .. py:method:: sign_code.run()</span>
+
+<span class="sd">   This is the main function responsible for digitally signing your code. It</span>
+<span class="sd">   is not expected to be invoked directly, but installs itself into the </span>
+<span class="sd">   distutils.command heirarcy by nature of it&#39;s inheritance from</span>
+<span class="sd">   `disutils.command.config &lt;https://docs.python.org/2/distutils/apiref.html#module-distutils.core&gt;`_ .</span>
+
+<span class="sd">   **sign_code** makes available additional arguments you can specify</span>
+<span class="sd">   when calling `distutils.core.setup() &lt;https://docs.python.org/2/distutils/apiref.html#distutils.core.setup&gt;`_ </span>
+
+<span class="sd">   .. tabularcolumns:: |l|L|l</span>
+
+<span class="sd">   +-----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   |  argument name  | value                                 | type                          |</span>
+<span class="sd">   +=================+=======================================+===============================+</span>
+<span class="sd">   | *pfx-file*      | Path to PKCS#12 file with your signing| a string                      |</span>
+<span class="sd">   |                 | signing certificate. This setting is  |                               |</span>
+<span class="sd">   |                 | required.                             |                               |</span>
+<span class="sd">   +-----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   | *password*      | Password associated with PKCS#12 file | a string                      |</span>
+<span class="sd">   |                 | Either this or *savedpassword* is     |                               |</span>
+<span class="sd">   |                 | required.                             |                               |</span>
+<span class="sd">   +-----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   | *savepassword*  | Request **sign_tool** save password   | a boolean                     |</span>
+<span class="sd">   |                 | in your private registry. The saved   |                               |</span>
+<span class="sd">   |                 | password is stored encrypted (using   |                               |</span>
+<span class="sd">   |                 | windows DPAPI).                       |                               |</span>
+<span class="sd">   +-----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   | *resetpassword* | Delete stored password.               | a boolean                     |</span>
+<span class="sd">   +-----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   | *digest*        | Digest to use when signing (default   | a string                      |</span>
+<span class="sd">   |                 | is SHA1).                             |                               |</span>
+<span class="sd">   +-----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   | *winsdk-path*   | The path to find Windows SDK (if it   | a string                      |</span>
+<span class="sd">   |                 | is not installed in default path)     |                               |</span>
+<span class="sd">   +-----------------+---------------------------------------+-------------------------------+</span>
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+
+<span class="sd">With options specified on command line, ``setup.py``::</span>
+
+<span class="sd">    from distutils.core import setup, Extension</span>
+<span class="sd">    from signet.command.sign_code import sign_code</span>
+
+<span class="sd">    setup(name = &#39;hello&#39;,</span>
+<span class="sd">        cmdclass = {&#39;sign_code&#39;: sign_code},</span>
+<span class="sd">        ext_modules = [Extension(&#39;hello&#39;, sources=[&#39;hello.py&#39;])],</span>
+<span class="sd">        )</span>
+
+<span class="sd">Invoked as ``python setup.py sign_code --savedpassword --pfx-file CERT-1-Expired-2014-11.pfx``</span>
+
+<span class="sd">With options embedded in ``setup.py``::</span>
+
+<span class="sd">    from distutils.core import setup, Extension</span>
+<span class="sd">    from signet.command.sign_code import sign_code</span>
+
+<span class="sd">    setup(name = &#39;hello&#39;,</span>
+<span class="sd">        cmdclass = {&#39;sign_code&#39;: sign_code},</span>
+<span class="sd">        ext_modules = [Extension(&#39;hello&#39;, sources=[&#39;hello.py&#39;])],</span>
+<span class="sd">        options = { &#39;sign_code&#39;: {</span>
+<span class="sd">                        &#39;savedpassword&#39;: True,</span>
+<span class="sd">                        &#39;pfx_file&#39;: &#39;CERT-1-Expired-2014-11.pfx&#39;,</span>
+<span class="sd">                        }</span>
+<span class="sd">                  },</span>
+<span class="sd">        )</span>
+
+<span class="sd">Invoked as ``python setup.py sign_code``</span>
+
+
+<span class="sd">Utility Functions</span>
+<span class="sd">-----------------</span>
+
+<span class="sd">.. autofunction:: get_winsdk_path</span>
+
+<span class="sd">.. autofunction:: get_saved_password</span>
+
+<span class="sd">.. autofunction:: save_password</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c"># pylint: enable=C0301</span>
+
+
+<span class="c"># ----------------------------------------------------------------------------</span>
+<span class="c"># Standard library imports</span>
+<span class="c"># ----------------------------------------------------------------------------</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">from</span> <span class="nn">distutils</span> <span class="kn">import</span> <span class="n">log</span>
+<span class="kn">from</span> <span class="nn">distutils.errors</span> <span class="kn">import</span> <span class="p">(</span><span class="n">DistutilsModuleError</span><span class="p">,</span> <span class="n">DistutilsPlatformError</span><span class="p">,</span> 
+        <span class="n">DistutilsSetupError</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">distutils.command.config</span> <span class="kn">import</span> <span class="n">config</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">_winreg</span>
+
+<span class="n">WINSDK_ERROR</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Windows SDK may not be installed on this machine. &quot;</span>
+                <span class="s">&quot;You can read more and (re-)download from &quot;</span>
+                <span class="s">&quot;https://en.wikipedia.org/wiki/Microsoft_Windows_SDK&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="get_winsdk_path"><a class="viewcode-back" href="../../../signet.command.sign_code.html#signet.command.sign_code.get_winsdk_path">[docs]</a><span class="k">def</span> <span class="nf">get_winsdk_path</span><span class="p">():</span>
+    <span class="sd">r&quot;&quot;&quot;Retrieve installed path for windows sdk.&quot;&quot;&quot;</span>
+
+    <span class="n">key</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">_winreg</span><span class="o">.</span><span class="n">OpenKeyEx</span><span class="p">(</span><span class="n">_winreg</span><span class="o">.</span><span class="n">HKEY_LOCAL_MACHINE</span><span class="p">,</span> 
+                <span class="s">&quot;SOFTWARE</span><span class="se">\\</span><span class="s">Microsoft</span><span class="se">\\</span><span class="s">Microsoft SDKs</span><span class="se">\\</span><span class="s">Windows&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">key</span><span class="p">:</span>
+            <span class="n">pth</span> <span class="o">=</span> <span class="n">_winreg</span><span class="o">.</span><span class="n">QueryValueEx</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="s">&#39;CurrentInstallFolder&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">pp</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">pth</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">part</span><span class="p">):</span>
+                    <span class="n">pp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">part</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pp</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">WindowsError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">DistutilsPlatformError</span><span class="p">(</span><span class="s">&#39;missing windows sdk registry entry: </span><span class="si">%s</span><span class="s">&#39;</span> 
+                <span class="o">%</span> <span class="n">WINSDK_ERROR</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="get_saved_password"><a class="viewcode-back" href="../../../signet.command.sign_code.html#signet.command.sign_code.get_saved_password">[docs]</a><span class="k">def</span> <span class="nf">get_saved_password</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;Retrieve previously saved password. The password is returned </span>
+<span class="sd">        unencrypted.  *name* is used to lookup a password on this machine,</span>
+<span class="sd">        which must be the same *name* used in :py:func:`.save_password`.&quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c"># Only import pywin32 dependency if user creates a project</span>
+        <span class="c"># that requires encrypted password.</span>
+        <span class="kn">import</span> <span class="nn">win32crypt</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">DistutilsModuleError</span><span class="p">(</span><span class="s">&quot;system missing required win32api &quot;</span>
+                <span class="s">&quot;module. You can download from &quot;</span>
+                <span class="s">&quot;http://sourceforge.net/projects.pywin32&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c"># retrieve value from user&#39;s private registry</span>
+
+        <span class="k">with</span> <span class="n">_winreg</span><span class="o">.</span><span class="n">OpenKeyEx</span><span class="p">(</span><span class="n">_winreg</span><span class="o">.</span><span class="n">HKEY_CURRENT_USER</span><span class="p">,</span>
+                <span class="s">&quot;SOFTWARE</span><span class="se">\\</span><span class="s">signet&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">key</span><span class="p">:</span>
+
+            <span class="n">enc</span> <span class="o">=</span> <span class="n">_winreg</span><span class="o">.</span><span class="n">QueryValue</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="n">enc</span> <span class="o">=</span>  <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">enc</span><span class="p">)</span>
+
+            <span class="c"># decrypt password using DPAPI (CRYPTPROECT_LOCAL_MACHINE)</span>
+
+            <span class="k">return</span> <span class="n">win32crypt</span><span class="o">.</span><span class="n">CryptUnprotectData</span><span class="p">(</span><span class="n">enc</span><span class="p">,</span> 
+                            <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">except</span> <span class="p">(</span><span class="ne">WindowsError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+</div>
+<div class="viewcode-block" id="save_password"><a class="viewcode-back" href="../../../signet.command.sign_code.html#signet.command.sign_code.save_password">[docs]</a><span class="k">def</span> <span class="nf">save_password</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;Save password to user&#39;s private registry (encrypted). *name* is used</span>
+<span class="sd">        to save a password on this machine and can be any string that complies</span>
+<span class="sd">        with Microsoft&#39;s registry naming rules. *password* is the plain text</span>
+<span class="sd">        password associated with *name*. Set *password* to None, to delete</span>
+<span class="sd">        value from the registry.</span>
+<span class="sd">    </span>
+<span class="sd">        Example use::</span>
+
+<span class="sd">            &gt;&gt;&gt; from signet.command.sign_code import *</span>
+<span class="sd">            &gt;&gt;&gt; save_password(&#39;Cert-1-Expires-2014-11&#39;, &#39;abc123&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; get_saved_password(&#39;Cert-1-Expires-2014-11&#39;)</span>
+<span class="sd">            &#39;abc123&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">_winreg</span><span class="o">.</span><span class="n">DeleteKey</span><span class="p">(</span><span class="n">_winreg</span><span class="o">.</span><span class="n">HKEY_CURRENT_USER</span><span class="p">,</span>
+                <span class="s">&quot;SOFTWARE</span><span class="se">\\</span><span class="s">signet</span><span class="se">\\</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c"># Only import pywin32 dependency if user creates a project</span>
+        <span class="c"># that requires encrypted password.</span>
+
+        <span class="kn">import</span> <span class="nn">win32crypt</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">DistutilsModuleError</span><span class="p">(</span><span class="s">&quot;system missing required win32api &quot;</span>
+                <span class="s">&quot;module. You can download from &quot;</span>
+                <span class="s">&quot;http://sourceforge.net/projects/pywin32&quot;</span><span class="p">)</span>
+
+    <span class="c"># encrypt password using DPAPI (CRYPTPROECT_LOCAL_MACHINE)</span>
+
+    <span class="n">enc</span> <span class="o">=</span> <span class="n">win32crypt</span><span class="o">.</span><span class="n">CryptProtectData</span><span class="p">(</span><span class="n">password</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+                <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+    <span class="n">enc</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">enc</span><span class="p">)</span>
+
+    <span class="c"># create any missing subkeys</span>
+
+    <span class="n">key</span> <span class="o">=</span> <span class="n">_winreg</span><span class="o">.</span><span class="n">CreateKey</span><span class="p">(</span><span class="n">_winreg</span><span class="o">.</span><span class="n">HKEY_CURRENT_USER</span><span class="p">,</span> 
+                <span class="s">&quot;SOFTWARE</span><span class="se">\\</span><span class="s">signet&quot;</span><span class="p">)</span>
+
+    <span class="c"># save password</span>
+
+    <span class="n">_winreg</span><span class="o">.</span><span class="n">SetValue</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">_winreg</span><span class="o">.</span><span class="n">REG_SZ</span><span class="p">,</span> <span class="n">enc</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="sign_code"><a class="viewcode-back" href="../../../signet.command.sign_code.html#signet.command.sign_code.sign_code">[docs]</a><span class="k">class</span> <span class="nc">sign_code</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;Digitally sign code&quot;&quot;&quot;</span>
+
+    <span class="n">description</span> <span class="o">=</span> <span class="s">&quot;digitally sign code&quot;</span>
+    <span class="n">user_options</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">user_options</span>
+
+    <span class="n">timestamp_urls</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s">&#39;http://timestamp.comodoca.com/authenticode&#39;</span><span class="p">,</span> 
+        <span class="s">&#39;http://timestamp.verisign.com/scripts/timstamp.dll&#39;</span><span class="p">,</span>
+        <span class="s">&#39;http://timestamp.globalsign.com/scripts/timestamp.dll&#39;</span><span class="p">,</span>
+        <span class="s">&#39;http://tsa.starfieldtech.com&#39;</span><span class="p">)</span>
+
+    <span class="n">user_options</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+        <span class="p">(</span><span class="s">&#39;winsdk-path=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;path to windows sdk (if non-standard)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;digest=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;signature digest to use (default SHA1)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;pfx-file=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;pathname of PFX file&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;password=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;plaintext password of PFX file&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;savedpassword&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;prompt &amp; store password using DPAPI&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;resetpassword&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;change the stored password&quot;</span><span class="p">),</span>
+        <span class="p">])</span> 
+
+    <span class="n">boolean_options</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;savedpassword&#39;</span><span class="p">,</span> <span class="s">&#39;resetpassword&#39;</span><span class="p">]</span>
+
+
+    <span class="k">def</span> <span class="nf">initialize_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;set default option values&quot;&quot;&quot;</span>
+
+        <span class="n">config</span><span class="o">.</span><span class="n">initialize_options</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">winsdk_path</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signtool</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">digest</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">savedpassword</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resetpassword</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">finalize_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;finished initializing option values&quot;&quot;&quot;</span>
+
+        <span class="c"># R0912 (too-many-branches)</span>
+        <span class="c"># pylint: disable=R0912</span>
+
+        <span class="n">config</span><span class="o">.</span><span class="n">finalize_options</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="n">opts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="o">.</span><span class="n">get_option_dict</span><span class="p">(</span><span class="s">&#39;sign_code&#39;</span><span class="p">)</span>
+
+        <span class="c"># validate pfx_file (REQUIRED)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;pfx-file&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">certname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span><span class="p">)</span>
+        <span class="n">certname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">certname</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c"># did user ask to delete password?</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resetpassword</span><span class="p">:</span>
+            <span class="n">save_password</span><span class="p">(</span><span class="n">certname</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;sign_code requires &#39;pfx-file=&#39; setting&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;missing the the pfx file &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> 
+                    <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span><span class="p">)</span>
+
+        <span class="c"># validate winsdk_path</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">winsdk_path</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">winsdk_path</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;winsdk-path&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">winsdk_path</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">winsdk_path</span> <span class="o">=</span> <span class="n">get_winsdk_path</span><span class="p">()</span>
+
+        <span class="c"># find signtool.exe</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">signtool</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">winsdk_path</span><span class="p">,</span> <span class="s">&#39;Bin&#39;</span><span class="p">,</span> <span class="s">&#39;signtool.exe&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">signtool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">DistutilsPlatformError</span><span class="p">(</span><span class="s">&#39;missing signtool.exe: </span><span class="si">%s</span><span class="s">&#39;</span> 
+                    <span class="o">%</span> <span class="n">WINSDK_ERROR</span><span class="p">)</span>
+
+        <span class="c"># validate digest (leave it none if not specified)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">digest</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">digest</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;digest&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+      
+        <span class="c"># validate password &amp; savedpassword (must specify one)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;password&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">savedpassword</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">savedpassword</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;savedpassword&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">savedpassword</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;sign_code requires either &quot;</span>
+                                      <span class="s">&quot;&#39;password=&#39; or &#39;savedpassword&#39;&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">savedpassword</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">get_saved_password</span><span class="p">(</span><span class="n">certname</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">&quot;Enter password: &quot;</span><span class="p">)</span>
+                <span class="n">save_password</span><span class="p">(</span><span class="n">certname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">next_timeserver</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;Return next timeserver url, generator pattern. Each timeserver</span>
+<span class="sd">            url will be returned 5 times.&quot;&quot;&quot;</span>
+
+        <span class="c"># pick a random starting timestamp_url, to spread the load</span>
+        <span class="c"># evenly against these public services.</span>
+
+        <span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timestamp_urls</span><span class="p">)</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c"># try each url at most 5 times</span>
+
+        <span class="k">for</span> <span class="n">curr</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">count</span> <span class="o">*</span> <span class="mi">5</span><span class="p">):</span>
+            <span class="n">ndx</span> <span class="o">=</span> <span class="p">(</span><span class="n">curr</span> <span class="o">+</span> <span class="n">seed</span><span class="p">)</span> <span class="o">%</span> <span class="n">count</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp_urls</span><span class="p">[</span><span class="n">ndx</span><span class="p">]</span>
+
+<div class="viewcode-block" id="sign_code.run"><a class="viewcode-back" href="../../../signet.command.sign_code.html#signet.command.sign_code.sign_code.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">r&quot;&quot;&quot;Perform signing action&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="s">&#39;nt&#39;</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;sign_code only available on windows&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="o">.</span><span class="n">ext_modules</span><span class="p">:</span>
+            <span class="n">py_source</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">exename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">py_source</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;.exe&quot;</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">exename</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;missing &#39;</span><span class="si">%s</span><span class="s">&#39; to sign&quot;</span> <span class="o">%</span> <span class="n">exename</span><span class="p">)</span>
+
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;sign </span><span class="si">%s</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">exename</span><span class="p">)</span>
+
+            <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+
+                <span class="n">timestamp_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_timeserver</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">timestamp_url</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;exhausted timestamp servers&quot;</span><span class="p">)</span>
+
+                <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">signtool</span><span class="p">,</span> <span class="s">&#39;sign&#39;</span><span class="p">,</span> 
+                            <span class="s">&#39;/f&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pfx_file</span><span class="p">,</span>
+                            <span class="s">&#39;/p&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">,</span>
+                            <span class="s">&#39;/t&#39;</span><span class="p">,</span> <span class="n">timestamp_url</span><span class="p">,</span>
+                      <span class="p">]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">cmd</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s">&#39;/v&#39;</span><span class="p">])</span>
+
+                <span class="n">cmd</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">exename</span><span class="p">])</span>
+
+                <span class="n">task</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span>
+                            <span class="n">stdout</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+                <span class="p">(</span><span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="p">)</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;failed to sign w/ timestamp url </span><span class="si">%s</span><span class="s">&#39;</span><span class="p">,</span> 
+                            <span class="n">timestamp_url</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">returncode</span><span class="p">:</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">stdout</span><span class="p">)</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">stderr</span><span class="p">)</span>
+
+                <span class="c"># If we get here, code is signed</span>
+
+                <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">stdout</span><span class="p">)</span>
+                <span class="k">break</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">signet  documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../command.html" >signet.command</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Author.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
