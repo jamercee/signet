@@ -1,6 +1,8 @@
 Signet - Protect your users and customers from hackers
 ======================================================
 
+FULL HTML Documentation: <http://jamercee.github.io/signet/>
+
 signet provides support for building and delivering tamper resistant
 python to your users and customers.
 
@@ -54,8 +56,7 @@ Build your loader:
 
 On Windows you'll have `hello.exe` and on Linux you'll have `hello`.
 
-The signet system also provides facilities for code signing. You'll need
-to modify `setup.py`:
+The signet system also provides facilities for code signing:
 
     from distutils.core import setup, Extension
     from signet.command.build_signet import build_signet, sign_code
@@ -83,10 +84,10 @@ Features
 -   Protection from tampering (SHA1 hashed content)
 -   On Windows
     -   Provides code signing executables
-    -   Loader performs PE executable verification
-    -   Resource file support (for icons, company name & version
-        reporting)
--   Customizable python loader (c++)
+    -   PE executable verification
+    -   Automatic resource file generation
+    -   Customizable program icon
+-   Customizable python loader (full c++ included)
 -   Unique process name
     -   show `hello` rather than `python hello.py`
 
@@ -100,10 +101,10 @@ by the sender --a **Signet Ring**.
 ### Project motivation
 
 Our firm, Carroll-Net provides a commercial multiplatform backup
-application written in open source. By delivering the source code to our
-application, clients can audit the entire code base to ensure it meets
-their needs, and even make changes to suit their individual tastes, and
-enterprise requirements.
+application written in python, delvered open source. By delivering the
+source code to our application, clients can audit the entire code base
+to ensure it meets their needs, and even make changes to suit their
+individual tastes, and enterprise requirements.
 
 But distributing commercial applications in python introduces new
 security challenges. Hackers who become aware of our large installation
@@ -155,7 +156,7 @@ installation experience when they choose your software.
 The signet approach is simple. Your python app is scanned and a sha1
 hash of it's content is calculated. Signet then recursively scans its
 dependencies and calculates sha1 hashes for each of them. These hashes
-are then written into to a loader which is compiled to an executable
+are then incorporated into a loader which is compiled to an executable
 program which will act as your application's loader.
 
 You then deliver these two files to your client; your newly built loader
@@ -206,16 +207,16 @@ Once you've purchased your certificate, you'll need to convert this file
 to a Personal Information Exchange File (also referred to as a [PKCS\#12
 file](https://en.wikipedia.org/wiki/PKCS12) ). The extension is expected
 to be \*.pfx. The vendor who provides your cert should have directions
-on how to convert there cert to this format.
+on how to convert their cert to this format.
 
 Signet will need to know the full path to where you store your \*.pfx
 file. It will also need to know the password you choose to unlock and
 use your pfx file. Signet will offer you an option to save your password
 (encrypted of course) to make repeated edit-compile-build cylces faster.
 
-Code signing has another interrelated topic, Windows Resource Files.
-While not strictly required, they are strongly recommended when offering
-secure computing solutions to your clients.
+Code signing usaged introduces an interrelated topic, Windows Resource
+Files. While not strictly required, they are strongly recommended when
+offering secure computing solutions to your clients.
 
 Windows resource files allow you to embed your company details in your
 executable. Your customers can inspect your programs and have the
@@ -226,7 +227,7 @@ your custom loader.
 ### Extra Perks
 
 One downside of deploying python based solutions is the ambiguous
-process list presented to your customers. When you applications are
+process list presented to your customers. When your applications are
 running, your customers only see another instance of python running. To
 determine the actual program name, a client needs to expand the process
 list to display the command line.
@@ -236,7 +237,7 @@ name displayed in the process list. In the example we cited above, your
 customer would see *hello.exe*. This makes for simpler system
 administration for your clients.
 
-Further, the signet code signing enables you to associate a custom icon
+Additionally, signet code signing enables you to associate a custom icon
 with your application. Administrative tools such as process explorer and
 task manager will render these icons adjacent to your running instances,
 further enhancing your clients admin experience.

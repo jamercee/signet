@@ -64,7 +64,7 @@ install: comp
 
 docs:
 	cd docs && $(MAKE) html
-	pandoc -f rst -t markdown -o README.md docs\index.rst
+	pandoc -f rst -t markdown -o README.md docs/index.rst
 
 clean:
 	-rm $(TGTS)
