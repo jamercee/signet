@@ -1,11 +1,15 @@
 # ----------------------------------------------------------------------------
-#  Used to perform static analysis of the client code
-#  (and libraries) for this platform.
+#  Signet Makefile. 
 #
 #  Available Recipes
 #
-#  		comp  - compile *.py -> *.pyc for this platform
-#  		clean - remove any compiled code
+#	build 	- invoke 'python setup.py build'
+#	clean   - remove intermediate build targets
+#	comp 	- perform python static analysis (compile *.py -> *.pyc)
+#	docs 	- build signet documentation (docs/_build/html && README.md)
+#			  (requires pandoc -- http://johnmacfarlane.net/pandoc/)
+#	install - invoke 'python setup.py install'
+#	test 	- run signet unittests
 #
 # ----------------------------------------------------------------------------
 
@@ -27,18 +31,14 @@ endif
 PYARCH := $(shell $(PYTHON) -c "import platform; print platform.architecture()[0]")
 
 # ----------------------------------------------------------------------------
-#  Implicit rule to compile *.py -> *.pyc
-#	@$(PYLINT) -rn --include-ids=y --rcfile pylint.rc $<
+#  Implicit rule perform python static analysis. We refer to this
+#  as compiling. To only analyze python modules that have changed,
+#  we compile *.py -> *.pyc after each static analysis pass.
 # ----------------------------------------------------------------------------
 %.pyc:	%.py
 	@echo Check $<
 	@$(PYLINT) -rn --rcfile pylint.rc $<
 	@$(PYTHON) -c 'import py_compile; py_compile.compile("$<")'
-
-%.pln: %.pyx
-	@echo Check $<
-	@$(PYLINT) -rn --rcfile pylint.rc $<
-	@touch $@
 
 # ----------------------------------------------------------------------------
 #  Build the list of target *.pyc to compile
@@ -64,6 +64,7 @@ install: comp
 
 docs:
 	cd docs && $(MAKE) html
+	pandoc -f rst -t markdown -o README.md docs\index.rst
 
 clean:
 	-rm $(TGTS)
