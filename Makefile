@@ -70,8 +70,16 @@ clean:
 	-rm $(TGTS)
 	$(PYTHON) setup.py clean
 
-publish: docs
+publish:
+	@chg=`git status -s|wc -l`; \
+	if [ $$chg -ne 0 ]; \
+	then \
+		  echo "Run 'git commit ..' before publish"; \
+		  exit -1; \
+	fi
+donotuse:
 	git checkout gh-pages
+	exit -1
 	git rm -r .
 	git checkout master -- docs/_build/html
 	git mv docs/_build/html/* .
