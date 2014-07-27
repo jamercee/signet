@@ -174,7 +174,7 @@ def get_saved_password(name):
 def save_password(name, password):
     r"""Save password to user's private registry (encrypted). *name* is used
         to save a password on this machine and can be any string that complies
-        with Microsoft's registry naming rules. *password* is the plain text
+        with Windows's registry naming rules. *password* is the plain text
         password associated with *name*. Set *password* to None, to delete
         value from the registry.
     
