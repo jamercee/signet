@@ -13,6 +13,7 @@ All Rights Reserved"""
 # Standard library imports
 # ----------------------------------------------------------------------------
 import datetime
+import mmap
 import os
 import shutil
 import subprocess
@@ -62,7 +63,9 @@ class TestSignCode(unittest.TestCase):
         cls.pfx = os.path.join(cls.cls_tmpd, "my.pfx")
         make_pfx(cls.password, cls.ca_cer, cls.ca_pvk, cls.pfx)
 
-        # Must wait until next minute before cert is valid !
+        # Must wait until next minute before cert is valid,
+        # if you remove this -- certutil will fail -1
+
         wait = 61 - datetime.datetime.now().second
         time.sleep(wait)
 
@@ -78,7 +81,7 @@ class TestSignCode(unittest.TestCase):
 
     def tearDown(self):
         r"""test fixture cleanup"""
-        #shutil.rmtree(self.tmpd, ignore_errors=True)
+        shutil.rmtree(self.tmpd, ignore_errors=True)
 
     def test_simple(self):
         r"""simple test of version (to confirm we got right)"""
@@ -122,13 +125,17 @@ class TestSignCode(unittest.TestCase):
         if rc or len(stderr):
             self.fail(stdout + "\n" + stderr)
 
+        # Confirm *.exe exists
+
         self.assertIn('hello.exe', os.listdir(self.tmpd))
+
+        # Sign *.exe
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'sign_code')
         if rc or len(stderr):
             self.fail(stdout + "\n" + stderr)
 
-        # Run the signet loader, validate output
+        # Run *.exe, validate output
 
         exe = os.path.join(self.tmpd, 'hello.exe')
         self.assertEqual(
@@ -164,12 +171,15 @@ class TestSignCode(unittest.TestCase):
                 "    ext_modules = [Extension('hello', \n"
                 "                      sources=['hello.py'])],\n"
                 ")\n" % (self.password, '\\\\'.join(self.pfx.split('\\'))))
-        
+       
+        # Build *.exe
+
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
         if rc or len(stderr):
             self.fail(stdout + "\n" + stderr)
-
         self.assertIn('hello.exe', os.listdir(self.tmpd))
+
+        # Sign code
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'sign_code')
         if rc or len(stderr):
@@ -177,14 +187,22 @@ class TestSignCode(unittest.TestCase):
 
         exe = os.path.join(self.tmpd, 'hello.exe')
 
-        # TAMPER
+        # TAMPER with binary
+        
+        with open(exe, 'r+b') as fout:
+            mm = mmap.mmap(fout.fileno(), 0)
+            off = mm.find('hello.py')
+            mm.seek(off)
+            mm.write('HELLO.py')
+            mm.close()
 
-        with open(exe, 'ab') as fout:
-            fout.write('\0')
+        # Run *.exe, confirm security violation
 
-        # Run the signet loader, validate output
-
-        self.assertEqual(
-            subprocess.check_output([exe], universal_newlines=True), 
-            "Hello world\n")
+        task = subprocess.Popen([exe], stdout=subprocess.PIPE, 
+                            stderr=subprocess.PIPE,
+                            universal_newlines=True)
+        _, stderr = task.communicate()
+        self.assertRegexpMatches(stderr,
+                'SECURITY VIOLATION: .+ tampered binary')
+        self.assertEqual(task.returncode, -1)
 
