@@ -80,7 +80,8 @@ publish:
 	git checkout gh-pages
 	git rm -r .
 	git checkout master -- docs/_build/html
-	git mv docs/_build/html/* docs/_build/html/.* .
+	git mv docs/_build/html/* .
+	git mv docs/_build/html/.* .
 	git commit -a -m "update docs"
 	git push origin gh-pages
 	git checkout master
