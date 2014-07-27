@@ -27,11 +27,12 @@ Functions to invoke windows code signing tools. The tools used are:
     |           | exchange (.pfx) file.             |                            |
     +-----------+-----------------------------------+----------------------------+
 
-The makecert and certutil have popup windows that need to be acknowledge. For the 
+makecert and certutil have popup windows that need to be acknowledge. For the 
 purpose of automation, these utility functions will handle the details of responding.
-You should not hit any keys while these tests are running.
+Do not hit any keys while these tests are running, or you'll interefere with the
+sequence of keystrokes.
 
-Also, the certutil will sound your system bell when the windows popup. It's annoying
+NOTE: certutil will sound your system bell when it's windows popup. It's annoying
 but you can safely ignore it.
 
 Copyright(c), 2014, Carroll-Net, Inc.
@@ -123,18 +124,21 @@ def run_makecert(cmd, password, issuer_prompt):
     time.sleep(0.2)
 
 def run_certutil(cmd, title):
-    r"""run certutil.exe command, respond to windows popups.  When adding or
-        removing from Root store, windows requires the user to acknowledge the
-        action."""
+    r"""run certutil.exe command, respond to windows popups.
+    
+        Adding or removing from Root store, windows requires the user to
+        acknowledge the action. As an additional security measure, it does
+        not respond normally to WScript.Shell automation (likely on purpose),
+        so we had to hack some workarounds."""
 
     # Run cmd using WshShell Object (run in background)
 
     shell = win32com.client.Dispatch('WScript.Shell')
     shell.Run(cmd, 1, False)
 
-    # Note -- the certutil security popup does not respond 'True'
-    # when AppActivate() hits it (which is likely a security measure).
-    # So, we just add a reasonable sleep period.
+    # Hack: certutil security popup does not respond 'True' to AppActivate()
+    # (which is likely a security measure). So, we just add a reasonable sleep
+    # period.
 
     time.sleep(1.0)
     shell.AppActivate(title)
