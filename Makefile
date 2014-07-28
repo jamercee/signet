@@ -70,7 +70,11 @@ clean:
 	-rm $(TGTS)
 	$(PYTHON) setup.py clean
 
-publish:
+pypi: comp
+	python setup.py check
+	python setup.py sdist upload
+
+publishdocs:
 	@chg=`git status -s|wc -l`; \
 	if [ $$chg -ne 0 ]; \
 	then \
