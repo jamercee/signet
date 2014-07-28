@@ -421,7 +421,7 @@ int validate() {
 
 	std::string my_mod = basename(SCRIPT);
 	std::size_t dot = my_mod.find_last_of(".");
-	if (dot != std::string.npos)
+	if (dot != std::string::npos)
 		my_mod = my_mod.substr(0, dot);
 
 	/* import imp */
