@@ -39,11 +39,14 @@ __copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 long_description = []
 
-with open('docs/index.rst') as fin:
-    for line in fin:
-        if line.startswith('Project Background'):
-            break
-        long_description.append(line)
+try:
+    with open('docs/index.rst') as fin:
+        for line in fin:
+            if line.startswith('Project Background'):
+                break
+            long_description.append(line)
+except IOError:
+    pass
 
 setup(
     # project meta-data
@@ -76,7 +79,8 @@ setup(
     packages = ['signet', 'signet.command'],
     package_data = {'signet': ['command/templates/*', 
                                'command/lib/*',
-                               'command/static/*',]},
+                               'command/static/*',
+                               ]},
 
     # testing (assumes you have nose installed)
 
