@@ -100,7 +100,7 @@ int Debug = LOG_WARNING;
 std::string dirname(const char path[]) {
 
 	std::string dname = path;
-	int slash = dname.find_last_of("/\\");
+	std::size_t slash = dname.find_last_of("/\\");
 
 	if (slash == std::string::npos)
 		return std::string("");
@@ -113,7 +113,7 @@ std::string dirname(const char path[]) {
 std::string basename(const char path[]) {
 
 	std::string pathname = path;
-	int slash = pathname.find_last_of("/\\");
+	std::size_t slash = pathname.find_last_of("/\\");
 	if (slash != std::string::npos)
 		pathname = pathname.substr(slash+1);
 
@@ -190,7 +190,7 @@ std::string list_asstring(PyObject* py_list) {
 	for(int i = 0; i < PyList_Size(py_list); i++) {
 
 		PyObject* py_item = PyList_GetItem(py_list, i);
-		char* item;
+		const char* item;
 		if (PyString_Check(py_item))
 			item = PyString_AsString(py_item);
 		else
@@ -248,7 +248,7 @@ char* sha1hexdigest(const char fname[]) {
 int find_module(const char mod_name[], PyObject* paths, PyObject** file, 
 		PyObject** pathname, PyObject** description) {
 
-	PyPtr results( PyObject_CallFunction(FndFx, "sO", mod_name, paths) );
+	PyPtr results( PyObject_CallFunction(FndFx, (char*)"sO", mod_name, paths) );
 	if (results.get() == NULL) {
 		if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_ImportError)) {
 			fprintf(stderr, "warning: could not find %s\n", mod_name);
@@ -276,7 +276,7 @@ int find_module(const char mod_name[], PyObject* paths, PyObject** file,
 int load_module(const char mod_name[], PyObject* py_file, PyObject* py_pathname, 
 		PyObject* py_description) {
 
-	PyPtr results( PyObject_CallFunction(LoadFx, "sOOO", mod_name,
+	PyPtr results( PyObject_CallFunction(LoadFx, (char*)"sOOO", mod_name,
 				py_file, py_pathname, py_description) );
 	if (results.get() == NULL) {
 		python_err("error loading module %s\n", mod_name);
@@ -284,7 +284,7 @@ int load_module(const char mod_name[], PyObject* py_file, PyObject* py_pathname,
 		}
 
 	if (py_file != Py_None) {
-		PyObject_CallMethod(py_file, "close", NULL);
+		PyObject_CallMethod(py_file, (char*)"close", NULL);
 		}
 
 	return 0;
@@ -405,12 +405,22 @@ _return:
 	return rc;
 	}
 
+/* compare two sha1 hexdigests for equality */
+
+int sha1equal(const char* h1, const char* h2) {
+	for(const char* ep = h1 + 40; h1 < ep; h1++, h2++) {
+		if (tolower(*h1) != tolower(*h2))
+			return 0;
+		}
+	return 1;
+	}
+
 int validate() {
 
 	/* we need to the module name of SCRIPT (so we can skip importing) */
 
 	std::string my_mod = basename(SCRIPT);
-	int dot = my_mod.find_last_of(".");
+	std::size_t dot = my_mod.find_last_of(".");
 	if (dot != std::string.npos)
 		my_mod = my_mod.substr(0, dot);
 
@@ -457,7 +467,7 @@ int validate() {
 		log(LOG_INFO, ">>> Found module %s -> %s\n", sp->mod_name, pathname.c_str());
 
 		const char* hexdigest = sha1hexdigest(pathname.c_str());
-		if (hexdigest != NULL && strcmpi(hexdigest, sp->hexdigest) != 0) {
+		if (hexdigest != NULL && !sha1equal(hexdigest, sp->hexdigest)) {
 			fprintf(stderr, "SECURITY VIOLATION: '%s' has been tampered with!\n", pathname.c_str());
 			if (TAMPER >= 2)
 				return -1;
