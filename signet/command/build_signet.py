@@ -447,7 +447,7 @@ class build_signet(_build_ext):
         if not self.ldflags and opts:
             self.opts = opts.get('ldflags', (None, []))[1]
         if not self.ldflags and os.name == 'posix':
-            self.ldflags = ['--strip-all']
+            self.ldflags = ['--strip-all', '-lstdc++',]
         if isinstance(self.ldflags, str):
             # pylint: disable=E1103
             self.ldlags = self.ldlags.split(',')
