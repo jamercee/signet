@@ -48,6 +48,12 @@ TGTS += $(patsubst %.py,%.pyc,$(wildcard signet/*.py))
 TGTS += $(patsubst %.py,%.pyc,$(wildcard signet/command/*.py))
 TGTS += $(patsubst %.py,%.pyc,$(wildcard tests/*.py))
 
+ifneq ($(OSTYPE), Windows)
+	TGTS := $(filter-out signet/command/sign_code.pyc,$(TGTS))
+	TGTS := $(filter-out tests/test_sign_code.pyc,$(TGTS))
+	TGTS := $(filter-out tests/winutils.pyc,$(TGTS))
+endif
+
 .PHONY: comp test build install docs clean
 
 comp: $(TGTS)
