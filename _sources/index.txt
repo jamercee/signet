@@ -75,11 +75,15 @@ Installing Signet
 
 Signet is hosted on github at https://github.com/jamercee/signet
 
-Installation is simplest using git::
+Installation using git::
 
     git clone https://github.com/jamercee/signet
     cd signet
     python setup.py install
+
+Signet can also be installed with pip::
+
+    pip install signet
 
 Features
 ========
