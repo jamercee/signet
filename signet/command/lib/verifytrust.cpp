@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #ifndef _MSC_VER
 
 /* Non-windows platforms do not provide the same facilities for
@@ -12,7 +14,6 @@ int verify_trust(const char source[], int warn_unsigned=0) {
 
 #else
 
-#include <stdio.h>
 #include <windows.h>
 #include <Softpub.h>
 #include <wincrypt.h>
