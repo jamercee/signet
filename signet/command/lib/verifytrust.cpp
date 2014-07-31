@@ -1,6 +1,14 @@
 #include <stdio.h>
+#include <string>
 
 #ifndef _MSC_VER
+
+/* on linux, argv[0] has executable path */
+
+int get_executable(const char* argv[], std::string& exepath) {
+	exepath = argv[0];
+	return 0;
+	}
 
 /* Non-windows platforms do not provide the same facilities for
  * code verification. For now, just return -1 (unsigned)
@@ -20,6 +28,20 @@ int verify_trust(const char source[], int warn_unsigned=0) {
 #include <wintrust.h>
 
 #pragma comment (lib, "wintrust")
+
+/* on windows, we have to dig deeper than argv[0] accomodate 
+ * order of precedence, http://support.microsoft.com/kb/35284
+ */
+
+int get_executable(char const* const* argv, std::string& exepath) {
+	char fname[ 32*1024 ];
+	if (! GetModuleFileNameA(NULL, fname, sizeof(fname))) {
+		fprintf(stderr, "SECURITY FAILURE: cannot retrieve executable name\n");
+		return -2;
+		}
+	exepath = fname;
+	return 0;
+	}
 
 /* verify code is trusted */
 
