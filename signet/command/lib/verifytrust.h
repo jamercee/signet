@@ -6,6 +6,10 @@
 #endif
 
 
+/* return fully qualified path of executable */
+
+int get_executable(char const* const * argv, std::string& exepath);
+
 /* verify the binary is signed and the signature is valid.
  *
  * returns:

@@ -631,14 +631,21 @@ int run(int argc, char* argv[]) {
 
 	if (TAMPER == 1 || TAMPER == 3) {
 
+		/* retrieve fully qualified path of executable */
+
+		std::string exename;
+		rc = get_executable(argv, exename);
+
 		/* validate binary signature */
 
-		int trusted = verify_trust(argv[0], 1);
+		if (rc == 0) {
+			int trusted = verify_trust(exename.c_str(), 1);
 
-		/* if untrusted, and max protection, exit */
+			/* if untrusted, and max protection, exit */
 
-		if (trusted < 1 && TAMPER == 3)
-			rc = -1;
+			if (trusted < 1 && TAMPER == 3)
+				rc = -1;
+			}
 		}
 
 	/* validate module security */
