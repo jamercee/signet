@@ -78,7 +78,7 @@ clean:
 
 pypi: comp
 	python setup.py check
-	python setup.py sdist upload
+	python setup.py register sdist upload
 
 publishdocs:
 	@chg=`git status -s|wc -l`; \
