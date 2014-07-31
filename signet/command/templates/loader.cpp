@@ -85,7 +85,7 @@ const int LOG_DEBUG = 10;
 const int LOG_NOTSET = 0;
 
 #ifdef LOGGING
-int Debug = DEBUG;
+int Debug = LOGGING;
 #else
 int Debug = LOG_WARNING;
 #endif
@@ -160,7 +160,7 @@ void python_err(const char fmt[], ...) {
 
 void log(int level, const char fmt[], ...) {
 
-	/* debug disabled? */
+	/* level too low? */
 
 	if (level < Debug)
 		return;
@@ -484,7 +484,10 @@ int validate() {
 		if (py_import != NULL) {
 			Imports.push_back(py_import);
 			}
-		else if (Debug) {
+
+		/* only log import errors if debug was select during build */
+
+		else if (Debug <= LOG_DEBUG) {
 			python_err("unable to import certified module %s\n", sp->mod_name);
 			}
 		}
