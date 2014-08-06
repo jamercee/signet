@@ -489,6 +489,8 @@ class build_signet(_build_ext):
         Read from a loader template and write out c/c++ source code, making
         suitable substitutions.
         """
+        # R0914 (too-many-locals)
+        # pylint: disable=R0914
 
         sig_decls = generate_sigs_decl(py_source, verbose=False, 
                 excludes=self.excludes)
@@ -498,14 +500,21 @@ class build_signet(_build_ext):
         loader_source = os.path.join(self.build_lib, 
                             os.path.basename(py_source[0:-3]) + '.cpp')
 
+        with open(self.template) as fin:
+            with open(loader_source, 'w') as fout:
+                for line in fin:
+                    fout.write(line)
+
         script_tag = 'const char SCRIPT[]'
         sigs_tag = 'const Signature SIGS[]'
         tamp_tag = 'int TAMPER'
 
         found_script, found_sigs, found_tamp = False, False, False
 
-        with open(self.template) as fin:
-            with open(loader_source, 'w') as fout:
+        loader_hdr = os.path.join(self.signet_root, 'templates', 'loader.h')
+        with open(loader_hdr) as fin:
+            tgt_hdr = os.path.join(self.build_lib, 'loader.h')
+            with open(tgt_hdr, 'w') as fout:
                 for line in fin:
                     # found SCRIPT declaration ?
                     if line.startswith(script_tag):
@@ -526,8 +535,8 @@ class build_signet(_build_ext):
                            (found_sigs, sigs_tag), 
                            (found_tamp, tamp_tag)):
             if not found:
-                raise DistutilsSetupError("missing declaration '%s' in loader" 
-                    % tag)
+                raise DistutilsSetupError("missing declaration '%s' in %s" 
+                    % (tag, loader_hdr))
 
         return loader_source
 
