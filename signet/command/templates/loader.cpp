@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "loader.h"
 #include "sha1.h"
 #include "verifytrust.h"
 
@@ -42,29 +43,6 @@ public:
 		o = ptr;
 		}
 	};
-
-struct Signature {				/* module signatures */
-	const char* hexdigest;
-	const char* mod_name;
-	};
-
-// ---------------------------------------------------------------------------
-// REPLACED GLOBALS (replaced by signet.command.build_signet)
-//
-// SCRIPT	- will be replaced with the script name we are loading.
-// SIGS   	- module signatures {{"hexdigest","module-name"},...}
-// TAMPER 	- controls how tampering is handled
-//	3  - maximum, SCRIPT & dependency check + require signed binary
-//		 (windows only)
-//	2  - normal, SCRIPT & dependency check
-//	1  - warn only, report tampering, but continue anyway
-//	0  - disable tamper checks
-// ---------------------------------------------------------------------------
-
-const char SCRIPT[] = "";
-const Signature SIGS[] = {{NULL,NULL}};
-int TAMPER = 2;
-
 
 PyObject* FndFx;				/* import imp; FndFx = imp.find_module */
 PyObject* LoadFx;				/* import imp; LoadFx = imp.load_module */
@@ -605,7 +583,7 @@ int initialize_virtualenv() {
  * Cleanup
  */
 
-int run(int argc, char* argv[]) {
+int run_validation(int argc, char* argv[]) {
 
 	/* initialize python */
 
@@ -677,7 +655,7 @@ int main(int argc, char* argv[]) {
 
 	log(LOG_INFO, ">>> Validation step\n");
 
-	if (run(argc, argv))
+	if (run_validation(argc, argv))
 		return -1;
 
 	log(LOG_INFO, ">>> Run SCRIPT %s\n", SCRIPT);
