@@ -158,9 +158,9 @@ std::string list_asstring(PyObject* py_list) {
 	if (py_list == Py_None)
 		return std::string("");
 	if (!PyList_Check(py_list))
-			return std::string("py_list not a list");
+		return std::string("py_list not a list");
 	if (PyList_Size(py_list) < 1)
-			return std::string("[]");
+		return std::string("[]");
 
 	/* iterate py_list, build response */
 
@@ -193,7 +193,8 @@ char* sha1hexdigest(const char fname[]) {
 
 	FILE* fin = fopen(fname, "rb");
 	if (fin == NULL) {
-		fprintf(stderr, "unable to open %s:%s\n", fname, strerror(errno));
+		log(LOG_ERROR, "sha1hexdigest() unable to open %s:%s\n", 
+				fname, strerror(errno));
 		return NULL;
 		}
 
@@ -229,7 +230,7 @@ int find_module(const char mod_name[], PyObject* paths, PyObject** file,
 	PyPtr results( PyObject_CallFunction(FndFx, (char*)"sO", mod_name, paths) );
 	if (results.get() == NULL) {
 		if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_ImportError)) {
-			fprintf(stderr, "warning: could not find %s\n", mod_name);
+			log(LOG_WARNING, "warning: could not find %s\n", mod_name);
 			}
 		else{
 			python_err("unexpected exception from imp.find_module()");
@@ -427,8 +428,10 @@ int validate() {
 		return -1;
 		}
 
+	/*
 	std::string ignore;
 	get_module_path("logging", ignore);
+	*/
 
 	/* iterate signatures, compare them to installed editions */
 
@@ -446,7 +449,8 @@ int validate() {
 
 		const char* hexdigest = sha1hexdigest(pathname.c_str());
 		if (hexdigest != NULL && !sha1equal(hexdigest, sp->hexdigest)) {
-			fprintf(stderr, "SECURITY VIOLATION: '%s' has been tampered with!\n", pathname.c_str());
+			log(LOG_ERROR, "SECURITY VIOLATION: '%s' has been tampered with!\n", 
+					pathname.c_str());
 			if (TAMPER >= 2)
 				return -1;
 			}
@@ -473,7 +477,7 @@ int validate() {
 	return 0;
 	}
 
-/* extract our opts, pass the rest to python */
+/* search for our opts, pass ALL python */
 
 int parse_options(int argc, char* argv[]) {
 
@@ -486,28 +490,26 @@ int parse_options(int argc, char* argv[]) {
 
 		if (strcmp(argv[i], "--SECURITYOFF") == 0) {
 			TAMPER = 0;
-			fprintf(stderr, "SECURITY DISABLED\n");
+			log(LOG_WARNING, "SECURITY DISABLED\n");
 			}
 
 		else if (strcmp(argv[i], "--SECURITYWARN") == 0) {
 			TAMPER = 1;
-			fprintf(stderr, "SECURITY DISABLED\n");
+			log(LOG_WARNING, "SECURITY DISABLED\n");
 			}
 
 		else if (strcmp(argv[i], "--SECURITYMAX") == 0) {
 			TAMPER = 3;
-			fprintf(stderr, "SECURITY MAXIMUM Enabled\n");
+			log(LOG_WARNING, "SECURITY MAXIMUM Enabled\n");
 			}
 
 		else if (strncmp(argv[i], "--SECURITY", 10) == 0) {
-			fprintf(stderr, "error: invalid setting, "
+			log(LOG_WARNING, "error: invalid setting, "
 					"valid choices are SECURITY(OFF|WARN|MAX)\n");
 			return -1;
 			}
 
-		else{
-			args[args_used++] = strdup(argv[i]);
-			}
+		args[args_used++] = strdup(argv[i]);
 		}
 
 	PySys_SetArgv(args_used, args);
@@ -517,78 +519,40 @@ int parse_options(int argc, char* argv[]) {
 
 /* optionally initialize virtualenv */
 
-int initialize_virtualenv() {
+void initialize_virtualenv() {
 
 	/* is vritualenv active? */
 
 	const char* venv = getenv("VIRTUAL_ENV");
-	if (venv == NULL)
-		return 0;
-
-	/* look for activate_this.py, posix first, then windows */
-
-	std::string activate_this = venv;
-	activate_this += "/bin/activate_this.py";
-
-	if (!isfile(activate_this.c_str())) {
-		activate_this = venv;
-		activate_this += "/Scripts/activate_this.py";
+	if (venv == NULL) {
+		log(LOG_DEBUG, "no VIRTUAL_ENV defined\n");
+		return;
 		}
 
-	if (!isfile(activate_this.c_str())) {
-		return 0;
+	/* look for posix first, then windows */
+
+	std::string pyhome = venv;
+	pyhome += "/bin";
+
+	if (!isdir(pyhome.c_str())) {
+		pyhome = venv;
+		pyhome += "/Scripts";
 		}
 
-	/* globals = { '__file__': 'path/to/activate_this.py' } */
-
-	PyPtr globals( PyDict_New() );
-	if (globals.get() == NULL) {
-		python_err("unable to create globals dict()\n");
-		return -1;
-		}
-	PyPtr py_activate_this( PyString_FromString(activate_this.c_str()) );
-	if (py_activate_this.get() == NULL) {
-		python_err("unable to initialize globals dict()\n");
-		return -1;
+	if (!isdir(pyhome.c_str())) {
+		log(LOG_WARNING, "VIRTUAL_ENV defined, but missing target %s\n", venv);
+		return;
 		}
 
-	if (PyDict_SetItemString(globals.get(), "__file__", py_activate_this.get())) {
-		python_err("unable to assign to globals dict()\n");
-		return -1;
-		}
-
-	/* open activate_this */
-
-	FILE* fin = fopen(activate_this.c_str(), "r");
-	if (!fin) {
-		fprintf(stderr, "unable to open virtualenv script %s: %s\n", 
-				activate_this.c_str(), strerror(errno));
-		return -1;
-		}
-
-	PyObject* execfile = PyRun_File(fin, activate_this.c_str(), 
-							Py_file_input, globals.get(), NULL);
-	if (execfile == NULL) {
-		python_err("failed execfile()\n");
-		fclose(fin);
-		return -1;
-		}
-	Imports.push_back(execfile);
-
-	return 0;
+	Py_SetPythonHome((char*)venv);
 	}
-
-/* Initialize python, 
- * Validate module security
- * Cleanup
- */
 
 int run_validation(int argc, char* argv[]) {
 
 	/* initialize python */
 
 	Py_SetProgramName((char*)SCRIPT);
-
+	initialize_virtualenv();
 	Py_Initialize();
 
 	/* parse command line */
@@ -597,11 +561,6 @@ int run_validation(int argc, char* argv[]) {
 		Py_Finalize();
 		return -1;
 		}
-
-	/* initialize virtualenv (if present) */
-
-	if (initialize_virtualenv())
-		return -1;
 
 	int rc = 0;
 
@@ -663,7 +622,7 @@ int main(int argc, char* argv[]) {
 	/* initialize python */
 
 	Py_SetProgramName((char*)SCRIPT);
-
+	initialize_virtualenv();
 	Py_Initialize();
 
 	/* parse command line */
@@ -672,11 +631,6 @@ int main(int argc, char* argv[]) {
 		Py_Finalize();
 		return -1;
 		}
-
-	/* initialize virtualenv (if present) */
-
-	if (initialize_virtualenv())
-		return -1;
 
 	int rc = 0;
 
@@ -691,7 +645,7 @@ int main(int argc, char* argv[]) {
 			PyErr_Print();
 		}
 	else{
-		fprintf(stderr, "could not open %s", script.c_str());
+		log(LOG_ERROR, "could not open %s\n", script.c_str());
 		rc = -1;
 		}
 
