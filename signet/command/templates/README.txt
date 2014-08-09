@@ -1,13 +1,8 @@
 This directory contains the signet secure loader template. It will be
 customized by signet.commands.build_signet during the build phase.
 
-If you provide you're own loader template, you'll need the following three
-declarations:
+If you provide you're own loader template, you should consider including
+"loader.h" near the top of your code. This will include the three
+signet declarations (see loader.h for further explanation).
 
-    const char SCRIPT = "name-of-script";
-    const Signature SIGS = { {"hexdigest", "modname"},...};
-    int TAMPER = 2;
-
-Declarations must start in column 1 (don't get too frisky with whitespace
-formatting as the parser logic is quite simple).
 
