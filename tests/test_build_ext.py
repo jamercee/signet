@@ -28,7 +28,7 @@ import pkg_resources
 # Module level initializations
 # ----------------------------------------------------------------------------
 __pychecker__  = 'unusednames=__maintainer__,__status__'
-__version__    = '2.4.1'
+__version__    = '2.4.2'
 __author__     = 'Jim Carroll'
 __maintainer__ = 'Jim Carroll'
 __email__      = 'jim@carroll.com'
@@ -102,6 +102,8 @@ class TestBuildSignet(unittest.TestCase):
         setup_py = os.path.join(self.tmpd, 'setup.py')
 
         with open(hello_py, 'w') as fout:
+            fout.write("import os\n")
+            fout.write("assert os.getenv('SIGNET') == '1'\n")
             fout.write("print('Hello world')\n")
         with open(setup_py, 'w') as fout:
             fout.write(
@@ -203,13 +205,6 @@ class TestBuildSignet(unittest.TestCase):
         with open(loader_c, 'w') as fout:
             fout.write(
                 "#include <stdio.h>\n"
-                "struct Signature {\n"
-                "   const char* hexdigest;\n"
-                "   const char* mod_name;\n"
-                "   };\n"
-                "const char SCRIPT[]="";\n"
-                "const Signature SIGS[] = {{NULL,NULL}};\n"
-                "int TAMPER = 2;\n"
                 "int main() {\n"
                 "   printf(\"CUSTOM\\n\");\n"
                 "   return 0;\n"
@@ -232,6 +227,104 @@ class TestBuildSignet(unittest.TestCase):
         self.assertEqual(
             subprocess.check_output([exe], universal_newlines=True), 
             "CUSTOM\n")
+
+    def test_excludes(self):
+        r"""test excludes options"""
+
+        hello_py = os.path.join(self.tmpd, 'hello.py')
+        world_py = os.path.join(self.tmpd, 'world.py')
+        setup_py = os.path.join(self.tmpd, 'setup.py')
+
+        with open(hello_py, 'w') as fout:
+            fout.write("import world\n")
+        with open(world_py, 'w') as fout:
+            fout.write("print('goodbye world')\n")
+        with open(setup_py, 'w') as fout:
+            fout.write(
+                "from distutils.core import setup, Extension\n"
+                "from signet.command.build_signet import build_signet\n"
+                "setup(name = 'hello',\n"
+                "    cmdclass = {'build_signet': build_signet},\n"
+                "    options = {'build_signet': {\n"
+                "                   'excludes': ['world'],\n"
+                "                   },\n"
+                "              },\n"
+                "    ext_modules = [Extension('hello', \n"
+                "                      sources=['hello.py'])],\n"
+                ")\n"
+                )
+        
+        (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
+        if rc or len(stderr):
+            self.fail(stdout + "\n" + stderr)
+
+        # modify world.py
+
+        with open(world_py, 'w') as fout:
+            fout.write("print('hello world')\n")
+
+        if os.name == 'nt':
+            exe = 'hello.exe'
+        else:
+            exe = 'hello'
+
+        self.assertIn(exe, os.listdir(self.tmpd))
+
+        # Run the signet loader, validate output
+
+        exe = os.path.join(self.tmpd, exe)
+        self.assertEqual(
+            subprocess.check_output([exe], universal_newlines=True), 
+            "hello world\n")
+
+    def test_skipdepends(self):
+        r"""test skipdepends option"""
+
+        hello_py = os.path.join(self.tmpd, 'hello.py')
+        world_py = os.path.join(self.tmpd, 'world.py')
+        setup_py = os.path.join(self.tmpd, 'setup.py')
+
+        with open(hello_py, 'w') as fout:
+            fout.write("import world\n")
+        with open(world_py, 'w') as fout:
+            fout.write("print('goodbye world')\n")
+        with open(setup_py, 'w') as fout:
+            fout.write(
+                "from distutils.core import setup, Extension\n"
+                "from signet.command.build_signet import build_signet\n"
+                "setup(name = 'hello',\n"
+                "    cmdclass = {'build_signet': build_signet},\n"
+                "    options = {'build_signet': {\n"
+                "                   'skipdepends': True,\n"
+                "                   },\n"
+                "              },\n"
+                "    ext_modules = [Extension('hello', \n"
+                "                      sources=['hello.py'])],\n"
+                ")\n"
+                )
+        
+        (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
+        if rc or len(stderr):
+            self.fail(stdout + "\n" + stderr)
+
+        # modify world.py
+
+        with open(world_py, 'w') as fout:
+            fout.write("print('hello world')\n")
+
+        if os.name == 'nt':
+            exe = 'hello.exe'
+        else:
+            exe = 'hello'
+
+        self.assertIn(exe, os.listdir(self.tmpd))
+
+        # Run the signet loader, validate output
+
+        exe = os.path.join(self.tmpd, exe)
+        self.assertEqual(
+            subprocess.check_output([exe], universal_newlines=True), 
+            "hello world\n")
 
     def test_detection_levels(self):
         r"""test alternate detection levels 3, 1 & 0 (omit 2)"""
