@@ -64,6 +64,14 @@ The built loader will be installed in the same directory as the script file.
    |                | signing, it's recommended you set     |                               |
    |                | this option to True                   |                               |
    +----------------+---------------------------------------+-------------------------------+
+   | *skipdepends*  | Instruct signet to not scan script    | a boolean                     |
+   |                | dependencies. This is a minimum       |                               |
+   |                | securty option.                       |                               |
+   +----------------+---------------------------------------+-------------------------------+
+   | *virtualenv*   | Build a virtualenv compatible loader. | a boolean                     |
+   |                | Exclude those modules that are        |                               |
+   |                | replaced by the virtualenv pkg.       |                               |
+   +----------------+---------------------------------------+-------------------------------+
 
 Windows Resources
 -----------------
@@ -123,6 +131,27 @@ The second mechanism to specify required resources is to add them to
 You can mix and match mechanism 1 and 2, specifying some settings in your
 script and other in *setup.py*. Settings in your script take precendence.
 
+Virtualenv Compatible Loaders
+-----------------------------
+
+`virtualenv <https://virtualenv.pypa.io>`_ is a tool for creating isolated
+python environments. Essentially, it creates a complete python environment on
+your client's computer, and populates it with the packages and modules your
+software requires which solves the problem is dependency versioniong. You can
+safely include any module you require without fear of breaking something in
+your client's environment.
+
+The virtualenv package includes replacements (overrides) for several system
+packages. This presents a potential problems for signet.  If your script
+imports one of these dependencies, the hashes calculated will likely not match
+the version of virtualenv (unless you build your loader from an active
+virtualenv environment). 
+
+We've collected the module replacements from virtualenv into a predefined
+exclude list. If your *setup.py* uses the **--virtualenv** option, the loader
+will be built with these excludes.
+
+
 Examples
 --------
 
@@ -157,12 +186,45 @@ An example to create Windows resource file, ``hello.py``::
 
     setup(name = 'hello',
         cmdclass = {'build_signet': build_signet},
+        options = {'build_signet' : { 
+                        'mkresources': True,
+                        }
+                  },
         ext_modules = [Extension('hello', sources=['hello.py'])],
         )
 
-To generate the Windows resources:
+An example to exclude certain dependencies
 
-    ``python setup.py build_signet --mkresource``
+``setup.py``::
+
+    from distutils.core import setup, Extension
+    from signet.command.build_signet import build_signet
+
+    setup(name = 'hello',
+        cmdclass = {'build_signet': build_signet},
+        options = {'build_signet' : { 
+                        'excludes': ['distutils'] ,
+                        }
+                  },
+        ext_modules = [Extension('hello', sources=['hello.py'])],
+        )
+
+An example to build a *virtualenv* compatible loaders
+
+``setup.py``::
+
+    from distutils.core import setup, Extension
+    from signet.command.build_signet import build_signet
+
+    setup(name = 'hello',
+        cmdclass = {'build_signet': build_signet},
+        options = {'build_signet' : { 
+                        'virtualenv': True,
+                        }
+                  },
+        ext_modules = [Extension('hello', sources=['hello.py'])],
+        )
+
 
 Utility Functions
 -----------------
@@ -198,6 +260,15 @@ __maintainer__ = 'Jim Carroll'
 __email__      = 'jim@carroll.com'
 __status__     = 'Production'
 __copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
+
+# Exclude these dependencies when building 
+# virtualenv compatible loader
+
+VIRTUALENV_EXCLUDES = [
+        'distutils',
+        'pip',
+        'site',
+        ]
 
 def module_signatures(py_source, verbose=True):
     r"""Scan *py_source* for dependencies, and return list of
@@ -257,9 +328,28 @@ def module_signatures(py_source, verbose=True):
 
     return sorted(signatures, key=lambda s: s[1])
 
-def generate_sigs_decl(py_source, verbose=True, excludes=None):
-    r"""Scan *py_source*, return SIGS c++ declaration as string. The 
-    returned string will be formatted:
+def make_sigs_decl(sigs):
+    r"""Accept list of signature tuples, and returns C declaration.
+        *sigs* is a list of 2-tuples [(sha1, mod), ...]. 
+    """
+    sigs_decl = StringIO.StringIO()
+    sigs_decl.write('const Signature SIGS[] = {\n')
+
+    for sha1, mod in sigs:
+        sigs_decl.write('\t{"%s", "%s"},\n' % (sha1, mod))
+    sigs_decl.write('\t};\n')
+
+    return sigs_decl.getvalue()
+
+
+def generate_sigs_decl(py_source, verbose=True, excludes=None, includes=None):
+    r"""Scan *py_source*, and returns C declaration as string. 
+        If *verbose* is true, display diagnostic output. Any modules or it's
+        decendants in the *excludes* list will be excluded from signatures
+        declaration. If *includes* list is provided, ONLY generate declarations
+        for the modules in the list.  
+        
+        The returned string will be formatted:
 
     .. code-block:: c
         
@@ -270,17 +360,28 @@ def generate_sigs_decl(py_source, verbose=True, excludes=None):
     """
 
     excludes = excludes or []
-
-    sigs_decl = StringIO.StringIO()
-    sigs_decl.write('const Signature SIGS[] = {\n')
-
+    includes = includes or []
+    sigs = []
     for sha1, mod in module_signatures(py_source, verbose):
-        if mod in excludes:
-            continue
-        sigs_decl.write('\t{"%s", "%s"},\n' % (sha1, mod))
-    sigs_decl.write('\t};\n')
 
-    return sigs_decl.getvalue()
+        # See if module is in excludes list
+
+        excluded = False
+        for excl in excludes:
+            # skip module and it's decendants
+            if excl == mod or excl.startswith('%s.' % mod):
+                excluded = True
+                break
+        if excluded:
+            continue
+
+        # Include the module if no includes were specified
+        # OR the module is in the includes list
+
+        if not includes or mod in includes:
+            sigs.append([sha1, mod])
+
+    return make_sigs_decl(sigs)
 
 def parse_rc_version(vstring):
     r"""convert version -> rc version
@@ -359,22 +460,30 @@ class build_signet(_build_ext):
     loader_exts = ['.c', '.cpp', '.c++', '.c++'] # recognized loader extensions
 
     user_options.extend([
-        ('template=', None,
-         "signet loader template (c or c++)"),
+
+        # options that require parameters
         ('cflags=',  None,
          "optional compiler flags (MSVC default is /EHsc)"), 
-        ('ldflags=', None,
-         "optional linker flags (posix default is --strip-all)"),
         ('detection=', None,
          "tamper detection - 0 disabled, 1 warn, 2 normal, 3 signed-binary "
          "(default 2)"),
         ('excludes=', None,
          "list of dependant modules to exlcude from signet loader (comma separated)"),
+        ('ldflags=', None,
+         "optional linker flags (posix default is --strip-all)"),
+        ('template=', None,
+         "signet loader template (c or c++)"),
+
+        # boolean options (no parameter expected)
         ('mkresource', None,
          "dynamic generation of windows resources"),
+        ('skipdepends', None,
+         "do not scan script dependencies"),
+        ('virtualenv', None,
+         "build virtualenv compatible loader"),
         ])
 
-    boolean_options.extend(['mkresource'])
+    boolean_options.extend(['mkresource', 'skipdepends', 'virtaulenv'])
 
     def __init__(self, dist):
         r"""initialize local variables -- BEFORE calling the
@@ -398,12 +507,15 @@ class build_signet(_build_ext):
 
         _build_ext.initialize_options(self)
 
-        self.template = None
         self.cflags = []
-        self.ldflags = []
         self.detection = None
         self.excludes = None
+        self.ldflags = []
         self.mkresource = None
+        self.skipdepends = None
+        self.template = None
+        self.virtualenv = None
+
 
     def finalize_options(self):
         r"""finished initializing option values"""
@@ -474,6 +586,19 @@ class build_signet(_build_ext):
             # pylint: disable=E1103
             self.excludes = self.excludes.split(',')
 
+        # validate skipdepends
+
+        if self.skipdepends is None and opts:
+            self.skipdepends = opts.get('skipdepends', (None, None))[1]
+
+        # validate virtualenv
+
+        if self.virtualenv is None and opts:
+            self.virtualenv = opts.get('virtualenv', (None, None))[1]
+
+        if self.virtualenv:
+            self.excludes.extend(VIRTUALENV_EXCLUDES)
+
         # validate mkresource generation
 
         if self.mkresource is None and opts:
@@ -492,8 +617,12 @@ class build_signet(_build_ext):
         # R0914 (too-many-locals)
         # pylint: disable=R0914
 
+        includes = None
+        if self.skipdepends:
+            includes = [os.path.basename(py_source)[:-3]]
+
         sig_decls = generate_sigs_decl(py_source, verbose=False, 
-                excludes=self.excludes)
+                        excludes=self.excludes, includes=includes)
 
         self.debug_print(sig_decls)
 
