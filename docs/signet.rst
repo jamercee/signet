@@ -9,4 +9,5 @@ signet package
 
     signet.command.build_signet
     signet.command.sign_code
+    loader
 
