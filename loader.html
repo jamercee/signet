@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>the loader &mdash; signet  documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="signet  documentation" href="index.html" />
+    <link rel="up" title="signet package" href="signet.html" />
+    <link rel="prev" title="sign_code - Digially sign code" href="signet.command.sign_code.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="signet.command.sign_code.html" title="sign_code - Digially sign code"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">signet  documentation</a> &raquo;</li>
+          <li><a href="signet.html" accesskey="U">signet package</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="the-loader">
+<h1>the loader<a class="headerlink" href="#the-loader" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference internal" href="signet.command.build_signet.html#module-signet.command.build_signet" title="signet.command.build_signet: Create a signet loader for a python script."><tt class="xref py py-mod docutils literal"><span class="pre">signet</span></tt></a> comes with a default loader written
+in c++, which you can replace if you choose.</p>
+<p>The heirarchy for the loader is:</p>
+<div class="highlight-python"><div class="highlight"><pre>signet.command/
+|-- lib/
+|   |-- sha1.cpp            -- sha1 calculator
+|   |-- sha1.h
+|   |-- verifytrust.cpp     -- windows pe verifier
+|   |-- verifytrust.h
+|
+|-- static/
+|   |-- app.ico             -- windows default icon
+|
+|-- templates/
+|   |-- loader.cpp          -- loader c++ code
+|   |-- loader.h
+</pre></div>
+</div>
+<p>signet comes with two library modules, <em>sha1</em> and <em>verifytrust</em>.  The <em>sha1</em>
+module provides an open source sha1 calculator. The <em>verifytrust</em> modules
+provides windows pe verification.</p>
+<div class="section" id="how-it-works">
+<h2>How It works<a class="headerlink" href="#how-it-works" title="Permalink to this headline">¶</a></h2>
+<p>The default loader is a two pass system, with each pass creating a separate
+instance of python.  The first pass performs verification, and the second pass
+runs the target script.</p>
+<p>The two pass architecture was to eanble the loader to scan the modules in
+alphabectical order (which is required for security). But importing modules
+alphabetically does not allow modules to initialize themselves in the way their
+designers may have intended. So after the first pass finishes validation, we
+finalize the first pass python and initialize a new instance.</p>
+<p>The heart of the loader is the <em>validate()</em> function. It iterates over the array
+of embedded <em>signature</em> objects verifying each module&#8217;s sha1 hash.
+The <em>validate()</em> function makes use of python&#8217;s
+<a class="reference external" href="https://docs.python.org/2/library/imp.html#imp.find_module">imp.find_module</a>
+infrastructure to locate the installed module&#8217;s path (which is why we need to import
+modules alphabetically).</p>
+<div class="section" id="import-side-effects">
+<h3>Import Side-effects<a class="headerlink" href="#import-side-effects" title="Permalink to this headline">¶</a></h3>
+<p>The two pass solution has one draw back, namely <em>import sidee-ffects</em>. First,
+let me say <strong>import side-effects are evil</strong>. Imported code should stick to
+strictly initializing its internal state. Imported code should NOT connect to
+databases, the Internet, make changes to the filesystem nor should it output to
+the console. Code that needs to do these things should wait until the user
+specifically requests initialization.</p>
+<p>If your code has import side-effects, then it&#8217;s up to you to make sure the
+side-effects are harmless during signet&#8217;s first pass validation phase. At a
+minimum, you need to ensure it&#8217;s safe to run these side-effects twice.</p>
+</div>
+</div>
+<div class="section" id="command-line-handling">
+<h2>Command Line Handling<a class="headerlink" href="#command-line-handling" title="Permalink to this headline">¶</a></h2>
+<p>The loader supports several commandline options. They are:</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="27%" />
+<col width="73%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">setting</th>
+<th class="head">description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><em>&#8211;SECURITYOFF</em></td>
+<td>Disable security checks (provide no warnings).
+This option is available for those instances
+you need to run code you&#8217;ve modified and have
+not yet rebuilt the loader (typically during
+python debugging).</td>
+</tr>
+<tr class="row-odd"><td><em>&#8211;SECURITYWARN</em></td>
+<td>Scan script and dependencies for tampering and
+emit warnings, but run the script even if
+tampering is detected.</td>
+</tr>
+<tr class="row-even"><td><em>&#8211;SECURITYMAX</em></td>
+<td>Set tamper security to highest level (PE
+verification + hash check)</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>These settings will be passed through to your script to allow it to know it&#8217;s
+security context.</p>
+</div>
+<div class="section" id="environment-variables">
+<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h2>
+<p>The loader sets the environment variable <strong>SIGNET=1</strong> before running the python
+child script.  This is testable in your script, and is useful to know you were
+launched by the signet loader.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">the loader</a><ul>
+<li><a class="reference internal" href="#how-it-works">How It works</a><ul>
+<li><a class="reference internal" href="#import-side-effects">Import Side-effects</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#command-line-handling">Command Line Handling</a></li>
+<li><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="signet.command.sign_code.html"
+                        title="previous chapter"><tt class="docutils literal"><span class="pre">sign_code</span></tt> - Digially sign code</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/loader.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="signet.command.sign_code.html" title="sign_code - Digially sign code"
+             >previous</a> |</li>
+        <li><a href="index.html">signet  documentation</a> &raquo;</li>
+          <li><a href="signet.html" >signet package</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Author.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

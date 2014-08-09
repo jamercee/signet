@@ -108,6 +108,8 @@ Features
 
   * show ``hello`` rather than ``python hello.py``
 
+* Compatible with virtualenv
+
 Project Background
 ==================
 
