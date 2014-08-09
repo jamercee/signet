@@ -619,6 +619,12 @@ int main(int argc, char* argv[]) {
 
 	log(LOG_INFO, ">>> Run SCRIPT %s\n", SCRIPT);
 
+	/* let python script know about signet */
+
+	putenv("SIGNET=1");
+
+	int rc = 0;
+
 	/* initialize python */
 
 	Py_SetProgramName((char*)SCRIPT);
@@ -631,8 +637,6 @@ int main(int argc, char* argv[]) {
 		Py_Finalize();
 		return -1;
 		}
-
-	int rc = 0;
 
 	std::string script = dirname(argv[0]) + SCRIPT;
 	FILE* fin = fopen(script.c_str(), "r");
