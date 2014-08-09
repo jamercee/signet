@@ -105,6 +105,7 @@ Features
 -   Customizable python loader (full c++ included)
 -   Unique process name
     -   show `hello` rather than `python hello.py`
+-   Compatible with virtualenv
 
 Project Background
 ------------------
