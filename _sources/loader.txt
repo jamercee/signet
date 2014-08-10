@@ -47,7 +47,7 @@ modules alphabetically).
 Import Side-effects
 +++++++++++++++++++
 
-The two pass solution has one draw back, namely *import sidee-ffects*. First,
+The two pass solution has one draw back, namely *import side-effects*. First,
 let me say **import side-effects are evil**. Imported code should stick to
 strictly initializing its internal state. Imported code should NOT connect to
 databases, the Internet, make changes to the filesystem nor should it output to
