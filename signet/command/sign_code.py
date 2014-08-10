@@ -362,6 +362,16 @@ class sign_code(config):
             if not os.path.isfile(exename):
                 raise DistutilsSetupError("missing '%s' to sign" % exename)
 
+            if not self.force:
+                try:
+                    subprocess.check_output(
+                            [self.signtool, 'verify', '/q', '/pa', exename],
+                            stderr=subprocess.STDOUT)
+                    log.info("skipping '%s' (already signed)", exename)
+                    continue
+                except subprocess.CalledProcessError:
+                    pass
+
             log.info('sign %s', exename)
 
             while 1:
