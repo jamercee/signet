@@ -59,26 +59,26 @@ endif
 comp: $(TGTS)
 
 test: comp
-	$(PYTHON) setup.py develop
-	$(PYTHON) setup.py nosetests -s
+	@$(PYTHON) setup.py develop
+	@$(PYTHON) setup.py nosetests -s
 
 build: comp
-	$(PYTHON) setup.py build
+	@$(PYTHON) setup.py build
 
 install: comp
-	$(PYTHON) setup.py install
+	@$(PYTHON) setup.py install
 
 docs:
-	cd docs && $(MAKE) html
-	pandoc -f rst -t markdown -o README.md docs/index.rst
+	@cd docs && $(MAKE) html
+	@pandoc -f rst -t markdown -o README.md docs/index.rst
 
 clean:
 	-rm $(TGTS)
 	$(PYTHON) setup.py clean
 
 pypi: comp
-	python setup.py check
-	python setup.py register sdist upload
+	@python setup.py check
+	@python setup.py register sdist upload
 
 publishdocs:
 	@chg=`git status -s|wc -l`; \
