@@ -137,15 +137,15 @@ Virtualenv Compatible Loaders
 `virtualenv <https://virtualenv.pypa.io>`_ is a tool for creating isolated
 python environments. Essentially, it creates a complete python environment on
 your client's computer, and populates it with the packages and modules your
-software requires which solves the problem is dependency versioniong. You can
+software requires which solves the problem of dependency versioniong. You can
 safely include any module you require without fear of breaking something in
 your client's environment.
 
-The virtualenv package includes replacements (overrides) for several system
-packages. This presents a potential problems for signet.  If your script
-imports one of these dependencies, the hashes calculated will likely not match
-the version of virtualenv (unless you build your loader from an active
-virtualenv environment). 
+The virtualenv package includes replacements modules for several packages. This
+presents a potential problems for signet.  If your script imports one of these
+dependencies, the hashes calculated will likely not match the version of
+virtualenv (unless you build your loader from withn an active virtualenv
+environment). 
 
 We've collected the module replacements from virtualenv into a predefined
 exclude list. If your *setup.py* uses the **--virtualenv** option, the loader
@@ -369,7 +369,7 @@ def generate_sigs_decl(py_source, verbose=True, excludes=None, includes=None):
         excluded = False
         for excl in excludes:
             # skip module and it's decendants
-            if excl == mod or excl.startswith('%s.' % mod):
+            if excl == mod or mod.startswith('%s.' % excl):
                 excluded = True
                 break
         if excluded:
