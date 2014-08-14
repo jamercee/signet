@@ -177,7 +177,7 @@ class TestBuildSignet(unittest.TestCase):
                 universal_newlines=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (_, stderr) = task.communicate()
-        self.assertEqual(task.returncode, -1, "tamper detection failed")
+        self.assertNotEqual(task.returncode, 0, "tamper detection failed")
         self.assertTrue(stderr and stderr.startswith('SECURITY VIOLATION:'),
                 "unrecognized tampered output %s" % stderr)
 
@@ -369,7 +369,7 @@ class TestBuildSignet(unittest.TestCase):
                 universal_newlines=True, 
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (_, stderr) = task.communicate()
-        self.assertEqual(task.returncode, -1, "signed detection failed")
+        self.assertNotEqual(task.returncode, 0, "signed detection failed")
         self.assertTrue(stderr and 
                 'SECURITY MAXIMUM Enabled' in stderr and
                 'SECURITY WARNING:' in stderr,
