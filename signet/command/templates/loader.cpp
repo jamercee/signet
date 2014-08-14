@@ -396,7 +396,7 @@ int sha1equal(const char* h1, const char* h2) {
 
 int validate() {
 
-	/* we need to the module name of SCRIPT (so we can skip importing) */
+	/* we need the module name of SCRIPT (so we can skip importing) */
 
 	std::string my_mod = basename(SCRIPT);
 	std::size_t dot = my_mod.find_last_of(".");
@@ -479,12 +479,12 @@ int validate() {
 
 /* search for our opts, pass ALL python */
 
-int parse_options(int argc, char* argv[]) {
+int parse_options(int argc, char* argv[], const char* script) {
 
 	char** args = new char*[argc];
 	int args_used = 1;
 
-	args[0] = strdup(SCRIPT);
+	args[0] = strdup(script);
 
 	for(int i = 1; i < argc; i++) {
 
@@ -547,17 +547,17 @@ void initialize_virtualenv() {
 	Py_SetPythonHome((char*)venv);
 	}
 
-int run_validation(int argc, char* argv[]) {
+int run_validation(int argc, char* argv[], const char* script) {
 
 	/* initialize python */
 
-	Py_SetProgramName((char*)SCRIPT);
+	Py_SetProgramName((char*)script);
 	initialize_virtualenv();
 	Py_Initialize();
 
 	/* parse command line */
 
-	if (parse_options(argc, argv)) {
+	if (parse_options(argc, argv, script)) {
 		Py_Finalize();
 		return -1;
 		}
@@ -612,45 +612,52 @@ int run_validation(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 
+	std::string exename;
+	if (get_executable(argv, exename)) {
+		return -1;
+		}
+	std::string script = dirname(exename.c_str()) + SCRIPT;
+
 	log(LOG_INFO, ">>> Validation step\n");
 
-	if (run_validation(argc, argv))
+	if (run_validation(argc, argv, script.c_str()))
 		return -1;
 
-	log(LOG_INFO, ">>> Run SCRIPT %s\n", SCRIPT);
+	log(LOG_INFO, ">>> Run SCRIPT %s\n", script.c_str());
 
 	/* let python script know about signet */
 
-	putenv("SIGNET=1");
+	putenv((char*)"SIGNET=1");
 
 	int rc = 0;
 
 	/* initialize python */
 
-	Py_SetProgramName((char*)SCRIPT);
+	Py_SetProgramName((char*)script.c_str());
 	initialize_virtualenv();
 	Py_Initialize();
 
 	/* parse command line */
 
-	if (parse_options(argc, argv)) {
+	if (parse_options(argc, argv, script.c_str())) {
 		Py_Finalize();
 		return -1;
 		}
 
-	std::string script = dirname(argv[0]) + SCRIPT;
-	FILE* fin = fopen(script.c_str(), "r");
-	if (fin) {
-		rc = PyRun_SimpleFileEx(fin, SCRIPT, 1);
+	if (rc == 0) {
+		FILE* fin = fopen(script.c_str(), "r");
+		if (fin) {
+			rc = PyRun_SimpleFileEx(fin, script.c_str(), 1);
 
-		/* catch and report exception */
+			/* catch and report exception */
 
-		if (rc && PyErr_Occurred())
-			PyErr_Print();
-		}
-	else{
-		log(LOG_ERROR, "could not open %s\n", script.c_str());
-		rc = -1;
+			if (rc && PyErr_Occurred())
+				PyErr_Print();
+			}
+		else{
+			log(LOG_ERROR, "could not open %s\n", script.c_str());
+			rc = -1;
+			}
 		}
 
 	Py_Finalize();
