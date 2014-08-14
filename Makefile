@@ -9,7 +9,7 @@
 #	docs 	- build signet documentation (docs/_build/html && README.md)
 #			  (requires pandoc -- http://johnmacfarlane.net/pandoc/)
 #	install - invoke 'python setup.py install'
-#	test 	- run signet unittests
+#	tests	- run signet unittests
 #
 # ----------------------------------------------------------------------------
 
@@ -54,13 +54,17 @@ ifneq ($(OSTYPE), Windows)
 	TGTS := $(filter-out tests/winutils.pyc,$(TGTS))
 endif
 
-.PHONY: comp test build install docs clean
+.PHONY: comp tests build install docs clean
 
 comp: $(TGTS)
 
-test: comp
+tests: comp
 	@$(PYTHON) setup.py develop
+ifeq ($(OSTYPE), Windows)
 	@$(PYTHON) setup.py nosetests -s
+else
+	@$(PYTHON) setup.py nosetests -s --exclude=test_sign_code
+endif
 
 build: comp
 	@$(PYTHON) setup.py build
