@@ -5,7 +5,7 @@
 
 /* on linux, argv[0] has executable path */
 
-int get_executable(const char* argv[], std::string& exepath) {
+int get_executable(char const* const* argv, std::string& exepath) {
 	exepath = argv[0];
 	return 0;
 	}

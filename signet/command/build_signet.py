@@ -249,6 +249,8 @@ import modulefinder
 import hashlib
 import os
 import re
+import sys
+import sysconfig
 
 # ----------------------------------------------------------------------------
 # Module level initializations
@@ -756,6 +758,10 @@ class build_signet(_build_ext):
     def build_extension(self, ext):
         r"""perform the build action(s)"""
 
+        # R0912 (too-many-branches)
+        # R0914 (too-many-locals)
+        # pylint: disable=R0912, R0914
+
         if ext.sources is None or len(ext.sources) > 1:
             raise DistutilsSetupError(
                 "in 'ext_modules' options (extension '%s'), "
@@ -825,12 +831,26 @@ class build_signet(_build_ext):
         if self.ldflags:
             extra_args.extend(self.ldflags)
 
-        # link
+        # Extra link libraries
+
+        library_dirs = []
+        libraries = self.get_libraries(ext)
+        if os.name == 'posix':
+            pylib = ('python%d.%d' %
+                     (sys.hexversion >> 24, (sys.hexversion >> 16) & 0xff))
+            if pylib != libraries:
+                libraries.append(pylib)
+            libp = sysconfig.get_config_var('LIBPL')
+            if libp:
+                library_dirs.append(libp)
+
+        # Link
 
         self.compiler.link_executable(
                 objects,
                 os.path.splitext(py_source)[0],
-                libraries = self.get_libraries(ext),
+                libraries = libraries,
+                library_dirs = library_dirs,
                 runtime_library_dirs = ext.runtime_library_dirs,
                 extra_postargs = extra_args,
                 debug = self.debug)
