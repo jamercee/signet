@@ -75,7 +75,7 @@ int Debug = LOG_WARNING;
 
 /* return the directory name of path */
 
-std::string dirname(const char path[]) {
+std::string _dirname(const char path[]) {
 
 	std::string dname = path;
 	std::size_t slash = dname.find_last_of("/\\");
@@ -88,7 +88,7 @@ std::string dirname(const char path[]) {
 
 /* return the base name of pathname path */
 
-std::string basename(const char path[]) {
+std::string _basename(const char path[]) {
 
 	std::string pathname = path;
 	std::size_t slash = pathname.find_last_of("/\\");
@@ -398,7 +398,7 @@ int validate() {
 
 	/* we need to the module name of SCRIPT (so we can skip importing) */
 
-	std::string my_mod = basename(SCRIPT);
+	std::string my_mod = _basename(SCRIPT);
 	std::size_t dot = my_mod.find_last_of(".");
 	if (dot != std::string::npos)
 		my_mod = my_mod.substr(0, dot);
@@ -638,7 +638,7 @@ int main(int argc, char* argv[]) {
 		return -1;
 		}
 
-	std::string script = dirname(argv[0]) + SCRIPT;
+	std::string script = _dirname(argv[0]) + SCRIPT;
 	FILE* fin = fopen(script.c_str(), "r");
 	if (fin) {
 		rc = PyRun_SimpleFileEx(fin, SCRIPT, 1);
