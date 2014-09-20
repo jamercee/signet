@@ -616,7 +616,7 @@ int main(int argc, char* argv[]) {
 	if (get_executable(argv, exename)) {
 		return -1;
 		}
-	std::string script = dirname(exename.c_str()) + SCRIPT;
+	std::string script = _dirname(exename.c_str()) + SCRIPT;
 
 	log(LOG_INFO, ">>> Validation step\n");
 
@@ -644,19 +644,20 @@ int main(int argc, char* argv[]) {
 		return -1;
 		}
 
-	std::string script = _dirname(argv[0]) + SCRIPT;
-	FILE* fin = fopen(script.c_str(), "r");
-	if (fin) {
-		rc = PyRun_SimpleFileEx(fin, SCRIPT, 1);
+	if (rc == 0) {
+		FILE* fin = fopen(script.c_str(), "r");
+		if (fin) {
+			rc = PyRun_SimpleFileEx(fin, SCRIPT, 1);
 
-		/* catch and report exception */
+			/* catch and report exception */
 
-		if (rc && PyErr_Occurred())
-			PyErr_Print();
-		}
-	else{
-		log(LOG_ERROR, "could not open %s\n", script.c_str());
-		rc = -1;
+			if (rc && PyErr_Occurred())
+				PyErr_Print();
+			}
+		else{
+			log(LOG_ERROR, "could not open %s\n", script.c_str());
+			rc = -1;
+			}
 		}
 
 	Py_Finalize();
