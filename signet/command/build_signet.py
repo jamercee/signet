@@ -45,7 +45,7 @@ The built loader will be installed in the same directory as the script file.
    |                | specific settings to use when         |                               |
    |                | **linking** the custom loader. If you |                               |
    |                | specify this setting on posix, you    |                               |
-   |                | override our default '--strip-all'    |                               |
+   |                | override our default '-lstdc++'       |                               |
    +----------------+---------------------------------------+-------------------------------+
    | *detection*    | The default tamper protection used    | an int                        |
    |                | by your loader. Valid choices are;    |                               |
@@ -472,7 +472,7 @@ class build_signet(_build_ext):
         ('excludes=', None,
          "list of dependant modules to exlcude from signet loader (comma separated)"),
         ('ldflags=', None,
-         "optional linker flags (posix default is --strip-all)"),
+         "optional linker flags (posix default is -lstdc++)"),
         ('template=', None,
          "signet loader template (c or c++)"),
 
@@ -561,7 +561,7 @@ class build_signet(_build_ext):
         if not self.ldflags and opts:
             self.opts = opts.get('ldflags', (None, []))[1]
         if not self.ldflags and os.name == 'posix':
-            self.ldflags = ['--strip-all', '-lstdc++',]
+            self.ldflags = ['-lstdc++',]
         if isinstance(self.ldflags, str):
             # pylint: disable=E1103
             self.ldlags = self.ldlags.split(',')
