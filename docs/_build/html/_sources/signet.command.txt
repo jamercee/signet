@@ -1,5 +1,0 @@
-.. automodule:: signet.command.build_signet
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

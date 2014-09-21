@@ -107,7 +107,7 @@ you override our default &#8216;/EHsc&#8217;.</td>
 specific settings to use when
 <strong>linking</strong> the custom loader. If you
 specify this setting on posix, you
-override our default &#8216;&#8211;strip-all&#8217;</td>
+override our default &#8216;-lstdc++&#8217;</td>
 <td>a list of strings</td>
 </tr>
 <tr class="row-odd"><td><em>detection</em></td>
@@ -134,6 +134,18 @@ to exclude from the signet loader.</td>
 resources. If you plan to use code
 signing, it&#8217;s recommended you set
 this option to True</td>
+<td>a boolean</td>
+</tr>
+<tr class="row-odd"><td><em>skipdepends</em></td>
+<td>Instruct signet to not scan script
+dependencies. This is a minimum
+securty option.</td>
+<td>a boolean</td>
+</tr>
+<tr class="row-even"><td><em>virtualenv</em></td>
+<td>Build a virtualenv compatible loader.
+Exclude those modules that are
+replaced by the virtualenv pkg.</td>
 <td>a boolean</td>
 </tr>
 </tbody>
@@ -211,6 +223,23 @@ be hard coded.  Try not to get too frisky with whitespace or formatting &#8211;
 <p>You can mix and match mechanism 1 and 2, specifying some settings in your
 script and other in <em>setup.py</em>. Settings in your script take precendence.</p>
 </div>
+<div class="section" id="virtualenv-compatible-loaders">
+<h2>Virtualenv Compatible Loaders<a class="headerlink" href="#virtualenv-compatible-loaders" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="https://virtualenv.pypa.io">virtualenv</a> is a tool for creating isolated
+python environments. Essentially, it creates a complete python environment on
+your client&#8217;s computer, and populates it with the packages and modules your
+software requires which solves the problem of dependency versioniong. You can
+safely include any module you require without fear of breaking something in
+your client&#8217;s environment.</p>
+<p>The virtualenv package includes replacements modules for several packages. This
+presents a potential problems for signet.  If your script imports one of these
+dependencies, the hashes calculated will likely not match the version of
+virtualenv (unless you build your loader from withn an active virtualenv
+environment).</p>
+<p>We&#8217;ve collected the module replacements from virtualenv into a predefined
+exclude list. If your <em>setup.py</em> uses the <strong>&#8211;virtualenv</strong> option, the loader
+will be built with these excludes.</p>
+</div>
 <div class="section" id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
 <p>Simple example, <tt class="docutils literal"><span class="pre">hello.py</span></tt>:</p>
@@ -243,13 +272,44 @@ script and other in <em>setup.py</em>. Settings in your script take precendence.
 
 <span class="n">setup</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;hello&#39;</span><span class="p">,</span>
     <span class="n">cmdclass</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span><span class="p">:</span> <span class="n">build_signet</span><span class="p">},</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span> <span class="p">:</span> <span class="p">{</span> 
+                    <span class="s">&#39;mkresources&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+                    <span class="p">}</span>
+              <span class="p">},</span>
     <span class="n">ext_modules</span> <span class="o">=</span> <span class="p">[</span><span class="n">Extension</span><span class="p">(</span><span class="s">&#39;hello&#39;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;hello.py&#39;</span><span class="p">])],</span>
     <span class="p">)</span>
 </pre></div>
 </div>
-<p>To generate the Windows resources:</p>
-<blockquote>
-<div><tt class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">build_signet</span> <span class="pre">--mkresource</span></tt></div></blockquote>
+<p>An example to exclude certain dependencies</p>
+<p><tt class="docutils literal"><span class="pre">setup.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">distutils.core</span> <span class="kn">import</span> <span class="n">setup</span><span class="p">,</span> <span class="n">Extension</span>
+<span class="kn">from</span> <span class="nn">signet.command.build_signet</span> <span class="kn">import</span> <span class="n">build_signet</span>
+
+<span class="n">setup</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;hello&#39;</span><span class="p">,</span>
+    <span class="n">cmdclass</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span><span class="p">:</span> <span class="n">build_signet</span><span class="p">},</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span> <span class="p">:</span> <span class="p">{</span> 
+                    <span class="s">&#39;excludes&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;distutils&#39;</span><span class="p">]</span> <span class="p">,</span>
+                    <span class="p">}</span>
+              <span class="p">},</span>
+    <span class="n">ext_modules</span> <span class="o">=</span> <span class="p">[</span><span class="n">Extension</span><span class="p">(</span><span class="s">&#39;hello&#39;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;hello.py&#39;</span><span class="p">])],</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>An example to build a <em>virtualenv</em> compatible loaders</p>
+<p><tt class="docutils literal"><span class="pre">setup.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">distutils.core</span> <span class="kn">import</span> <span class="n">setup</span><span class="p">,</span> <span class="n">Extension</span>
+<span class="kn">from</span> <span class="nn">signet.command.build_signet</span> <span class="kn">import</span> <span class="n">build_signet</span>
+
+<span class="n">setup</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;hello&#39;</span><span class="p">,</span>
+    <span class="n">cmdclass</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span><span class="p">:</span> <span class="n">build_signet</span><span class="p">},</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;build_signet&#39;</span> <span class="p">:</span> <span class="p">{</span> 
+                    <span class="s">&#39;virtualenv&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+                    <span class="p">}</span>
+              <span class="p">},</span>
+    <span class="n">ext_modules</span> <span class="o">=</span> <span class="p">[</span><span class="n">Extension</span><span class="p">(</span><span class="s">&#39;hello&#39;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;hello.py&#39;</span><span class="p">])],</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="utility-functions">
 <h2>Utility Functions<a class="headerlink" href="#utility-functions" title="Permalink to this headline">¶</a></h2>
@@ -268,9 +328,16 @@ script and other in <em>setup.py</em>. Settings in your script take precendence.
 
 <dl class="function">
 <dt id="signet.command.build_signet.generate_sigs_decl">
-<tt class="descclassname">signet.command.build_signet.</tt><tt class="descname">generate_sigs_decl</tt><big>(</big><em>py_source</em>, <em>verbose=True</em>, <em>excludes=None</em><big>)</big><a class="reference internal" href="_modules/signet/command/build_signet.html#generate_sigs_decl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#signet.command.build_signet.generate_sigs_decl" title="Permalink to this definition">¶</a></dt>
-<dd><p>Scan <em>py_source</em>, return SIGS c++ declaration as string. The 
-returned string will be formatted:</p>
+<tt class="descclassname">signet.command.build_signet.</tt><tt class="descname">generate_sigs_decl</tt><big>(</big><em>py_source</em>, <em>verbose=True</em>, <em>excludes=None</em>, <em>includes=None</em><big>)</big><a class="reference internal" href="_modules/signet/command/build_signet.html#generate_sigs_decl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#signet.command.build_signet.generate_sigs_decl" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Scan <em>py_source</em>, and returns C declaration as string. </dt>
+<dd><p class="first">If <em>verbose</em> is true, display diagnostic output. Any modules or it&#8217;s
+decendants in the <em>excludes</em> list will be excluded from signatures
+declaration. If <em>includes</em> list is provided, ONLY generate declarations
+for the modules in the list.</p>
+<p class="last">The returned string will be formatted:</p>
+</dd>
+</dl>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">const</span> <span class="n">Signature</span> <span class="n">SIGS</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
         <span class="p">{</span><span class="s">&quot;hexdigest1&quot;</span><span class="p">,</span> <span class="s">&quot;module1&quot;</span><span class="p">},</span>
         <span class="p">{</span><span class="s">&quot;hexdigest2&quot;</span><span class="p">,</span> <span class="s">&quot;module2&quot;</span><span class="p">},</span>
@@ -292,6 +359,7 @@ returned string will be formatted:</p>
   <ul>
 <li><a class="reference internal" href="#"><tt class="docutils literal"><span class="pre">build_signet</span></tt> - Build a custom signet loader</a><ul>
 <li><a class="reference internal" href="#windows-resources">Windows Resources</a></li>
+<li><a class="reference internal" href="#virtualenv-compatible-loaders">Virtualenv Compatible Loaders</a></li>
 <li><a class="reference internal" href="#examples">Examples</a></li>
 <li><a class="reference internal" href="#utility-functions">Utility Functions</a></li>
 </ul>
