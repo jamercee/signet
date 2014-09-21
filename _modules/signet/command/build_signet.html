@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
     <link rel="top" title="signet  documentation" href="../../../index.html" />
-    <link rel="up" title="signet.command" href="../command.html" /> 
+    <link rel="up" title="Module code" href="../../index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -37,8 +37,7 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li><a href="../../../index.html">signet  documentation</a> &raquo;</li>
-          <li><a href="../../index.html" >Module code</a> &raquo;</li>
-          <li><a href="../command.html" accesskey="U">signet.command</a> &raquo;</li> 
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -95,7 +94,7 @@
 <span class="sd">   |                | specific settings to use when         |                               |</span>
 <span class="sd">   |                | **linking** the custom loader. If you |                               |</span>
 <span class="sd">   |                | specify this setting on posix, you    |                               |</span>
-<span class="sd">   |                | override our default &#39;--strip-all&#39;    |                               |</span>
+<span class="sd">   |                | override our default &#39;-lstdc++&#39;       |                               |</span>
 <span class="sd">   +----------------+---------------------------------------+-------------------------------+</span>
 <span class="sd">   | *detection*    | The default tamper protection used    | an int                        |</span>
 <span class="sd">   |                | by your loader. Valid choices are;    |                               |</span>
@@ -113,6 +112,14 @@
 <span class="sd">   |                | resources. If you plan to use code    |                               |</span>
 <span class="sd">   |                | signing, it&#39;s recommended you set     |                               |</span>
 <span class="sd">   |                | this option to True                   |                               |</span>
+<span class="sd">   +----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   | *skipdepends*  | Instruct signet to not scan script    | a boolean                     |</span>
+<span class="sd">   |                | dependencies. This is a minimum       |                               |</span>
+<span class="sd">   |                | securty option.                       |                               |</span>
+<span class="sd">   +----------------+---------------------------------------+-------------------------------+</span>
+<span class="sd">   | *virtualenv*   | Build a virtualenv compatible loader. | a boolean                     |</span>
+<span class="sd">   |                | Exclude those modules that are        |                               |</span>
+<span class="sd">   |                | replaced by the virtualenv pkg.       |                               |</span>
 <span class="sd">   +----------------+---------------------------------------+-------------------------------+</span>
 
 <span class="sd">Windows Resources</span>
@@ -173,6 +180,27 @@
 <span class="sd">You can mix and match mechanism 1 and 2, specifying some settings in your</span>
 <span class="sd">script and other in *setup.py*. Settings in your script take precendence.</span>
 
+<span class="sd">Virtualenv Compatible Loaders</span>
+<span class="sd">-----------------------------</span>
+
+<span class="sd">`virtualenv &lt;https://virtualenv.pypa.io&gt;`_ is a tool for creating isolated</span>
+<span class="sd">python environments. Essentially, it creates a complete python environment on</span>
+<span class="sd">your client&#39;s computer, and populates it with the packages and modules your</span>
+<span class="sd">software requires which solves the problem of dependency versioniong. You can</span>
+<span class="sd">safely include any module you require without fear of breaking something in</span>
+<span class="sd">your client&#39;s environment.</span>
+
+<span class="sd">The virtualenv package includes replacements modules for several packages. This</span>
+<span class="sd">presents a potential problems for signet.  If your script imports one of these</span>
+<span class="sd">dependencies, the hashes calculated will likely not match the version of</span>
+<span class="sd">virtualenv (unless you build your loader from withn an active virtualenv</span>
+<span class="sd">environment). </span>
+
+<span class="sd">We&#39;ve collected the module replacements from virtualenv into a predefined</span>
+<span class="sd">exclude list. If your *setup.py* uses the **--virtualenv** option, the loader</span>
+<span class="sd">will be built with these excludes.</span>
+
+
 <span class="sd">Examples</span>
 <span class="sd">--------</span>
 
@@ -207,12 +235,45 @@
 
 <span class="sd">    setup(name = &#39;hello&#39;,</span>
 <span class="sd">        cmdclass = {&#39;build_signet&#39;: build_signet},</span>
+<span class="sd">        options = {&#39;build_signet&#39; : { </span>
+<span class="sd">                        &#39;mkresources&#39;: True,</span>
+<span class="sd">                        }</span>
+<span class="sd">                  },</span>
 <span class="sd">        ext_modules = [Extension(&#39;hello&#39;, sources=[&#39;hello.py&#39;])],</span>
 <span class="sd">        )</span>
 
-<span class="sd">To generate the Windows resources:</span>
+<span class="sd">An example to exclude certain dependencies</span>
 
-<span class="sd">    ``python setup.py build_signet --mkresource``</span>
+<span class="sd">``setup.py``::</span>
+
+<span class="sd">    from distutils.core import setup, Extension</span>
+<span class="sd">    from signet.command.build_signet import build_signet</span>
+
+<span class="sd">    setup(name = &#39;hello&#39;,</span>
+<span class="sd">        cmdclass = {&#39;build_signet&#39;: build_signet},</span>
+<span class="sd">        options = {&#39;build_signet&#39; : { </span>
+<span class="sd">                        &#39;excludes&#39;: [&#39;distutils&#39;] ,</span>
+<span class="sd">                        }</span>
+<span class="sd">                  },</span>
+<span class="sd">        ext_modules = [Extension(&#39;hello&#39;, sources=[&#39;hello.py&#39;])],</span>
+<span class="sd">        )</span>
+
+<span class="sd">An example to build a *virtualenv* compatible loaders</span>
+
+<span class="sd">``setup.py``::</span>
+
+<span class="sd">    from distutils.core import setup, Extension</span>
+<span class="sd">    from signet.command.build_signet import build_signet</span>
+
+<span class="sd">    setup(name = &#39;hello&#39;,</span>
+<span class="sd">        cmdclass = {&#39;build_signet&#39;: build_signet},</span>
+<span class="sd">        options = {&#39;build_signet&#39; : { </span>
+<span class="sd">                        &#39;virtualenv&#39;: True,</span>
+<span class="sd">                        }</span>
+<span class="sd">                  },</span>
+<span class="sd">        ext_modules = [Extension(&#39;hello&#39;, sources=[&#39;hello.py&#39;])],</span>
+<span class="sd">        )</span>
+
 
 <span class="sd">Utility Functions</span>
 <span class="sd">-----------------</span>
@@ -237,6 +298,8 @@
 <span class="kn">import</span> <span class="nn">hashlib</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">sysconfig</span>
 
 <span class="c"># ----------------------------------------------------------------------------</span>
 <span class="c"># Module level initializations</span>
@@ -248,6 +311,15 @@
 <span class="n">__email__</span>      <span class="o">=</span> <span class="s">&#39;jim@carroll.com&#39;</span>
 <span class="n">__status__</span>     <span class="o">=</span> <span class="s">&#39;Production&#39;</span>
 <span class="n">__copyright__</span>  <span class="o">=</span> <span class="s">&#39;Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved&#39;</span>
+
+<span class="c"># Exclude these dependencies when building </span>
+<span class="c"># virtualenv compatible loader</span>
+
+<span class="n">VIRTUALENV_EXCLUDES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s">&#39;distutils&#39;</span><span class="p">,</span>
+        <span class="s">&#39;pip&#39;</span><span class="p">,</span>
+        <span class="s">&#39;site&#39;</span><span class="p">,</span>
+        <span class="p">]</span>
 
 <div class="viewcode-block" id="module_signatures"><a class="viewcode-back" href="../../../signet.command.build_signet.html#signet.command.build_signet.module_signatures">[docs]</a><span class="k">def</span> <span class="nf">module_signatures</span><span class="p">(</span><span class="n">py_source</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
     <span class="sd">r&quot;&quot;&quot;Scan *py_source* for dependencies, and return list of</span>
@@ -307,9 +379,28 @@
 
     <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">signatures</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 </div>
-<div class="viewcode-block" id="generate_sigs_decl"><a class="viewcode-back" href="../../../signet.command.build_signet.html#signet.command.build_signet.generate_sigs_decl">[docs]</a><span class="k">def</span> <span class="nf">generate_sigs_decl</span><span class="p">(</span><span class="n">py_source</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">excludes</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-    <span class="sd">r&quot;&quot;&quot;Scan *py_source*, return SIGS c++ declaration as string. The </span>
-<span class="sd">    returned string will be formatted:</span>
+<span class="k">def</span> <span class="nf">make_sigs_decl</span><span class="p">(</span><span class="n">sigs</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;Accept list of signature tuples, and returns C declaration.</span>
+<span class="sd">        *sigs* is a list of 2-tuples [(sha1, mod), ...]. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sigs_decl</span> <span class="o">=</span> <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">sigs_decl</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;const Signature SIGS[] = {</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">sha1</span><span class="p">,</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">sigs</span><span class="p">:</span>
+        <span class="n">sigs_decl</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">{&quot;</span><span class="si">%s</span><span class="s">&quot;, &quot;</span><span class="si">%s</span><span class="s">&quot;},</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sha1</span><span class="p">,</span> <span class="n">mod</span><span class="p">))</span>
+    <span class="n">sigs_decl</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">};</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sigs_decl</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="generate_sigs_decl"><a class="viewcode-back" href="../../../signet.command.build_signet.html#signet.command.build_signet.generate_sigs_decl">[docs]</a><span class="k">def</span> <span class="nf">generate_sigs_decl</span><span class="p">(</span><span class="n">py_source</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">excludes</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">includes</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">r&quot;&quot;&quot;Scan *py_source*, and returns C declaration as string. </span>
+<span class="sd">        If *verbose* is true, display diagnostic output. Any modules or it&#39;s</span>
+<span class="sd">        decendants in the *excludes* list will be excluded from signatures</span>
+<span class="sd">        declaration. If *includes* list is provided, ONLY generate declarations</span>
+<span class="sd">        for the modules in the list.  </span>
+<span class="sd">        </span>
+<span class="sd">        The returned string will be formatted:</span>
 
 <span class="sd">    .. code-block:: c</span>
 <span class="sd">        </span>
@@ -320,17 +411,28 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">excludes</span> <span class="o">=</span> <span class="n">excludes</span> <span class="ow">or</span> <span class="p">[]</span>
-
-    <span class="n">sigs_decl</span> <span class="o">=</span> <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
-    <span class="n">sigs_decl</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;const Signature SIGS[] = {</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
-
+    <span class="n">includes</span> <span class="o">=</span> <span class="n">includes</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="n">sigs</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">sha1</span><span class="p">,</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">module_signatures</span><span class="p">(</span><span class="n">py_source</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">excludes</span><span class="p">:</span>
-            <span class="k">continue</span>
-        <span class="n">sigs_decl</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">{&quot;</span><span class="si">%s</span><span class="s">&quot;, &quot;</span><span class="si">%s</span><span class="s">&quot;},</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sha1</span><span class="p">,</span> <span class="n">mod</span><span class="p">))</span>
-    <span class="n">sigs_decl</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">};</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">sigs_decl</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+        <span class="c"># See if module is in excludes list</span>
+
+        <span class="n">excluded</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">excl</span> <span class="ow">in</span> <span class="n">excludes</span><span class="p">:</span>
+            <span class="c"># skip module and it&#39;s decendants</span>
+            <span class="k">if</span> <span class="n">excl</span> <span class="o">==</span> <span class="n">mod</span> <span class="ow">or</span> <span class="n">mod</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">.&#39;</span> <span class="o">%</span> <span class="n">excl</span><span class="p">):</span>
+                <span class="n">excluded</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">break</span>
+        <span class="k">if</span> <span class="n">excluded</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="c"># Include the module if no includes were specified</span>
+        <span class="c"># OR the module is in the includes list</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">includes</span> <span class="ow">or</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">includes</span><span class="p">:</span>
+            <span class="n">sigs</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">sha1</span><span class="p">,</span> <span class="n">mod</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">make_sigs_decl</span><span class="p">(</span><span class="n">sigs</span><span class="p">)</span>
 </div>
 <span class="k">def</span> <span class="nf">parse_rc_version</span><span class="p">(</span><span class="n">vstring</span><span class="p">):</span>
     <span class="sd">r&quot;&quot;&quot;convert version -&gt; rc version</span>
@@ -409,22 +511,30 @@
     <span class="n">loader_exts</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;.c&#39;</span><span class="p">,</span> <span class="s">&#39;.cpp&#39;</span><span class="p">,</span> <span class="s">&#39;.c++&#39;</span><span class="p">,</span> <span class="s">&#39;.c++&#39;</span><span class="p">]</span> <span class="c"># recognized loader extensions</span>
 
     <span class="n">user_options</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
-        <span class="p">(</span><span class="s">&#39;template=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
-         <span class="s">&quot;signet loader template (c or c++)&quot;</span><span class="p">),</span>
+
+        <span class="c"># options that require parameters</span>
         <span class="p">(</span><span class="s">&#39;cflags=&#39;</span><span class="p">,</span>  <span class="bp">None</span><span class="p">,</span>
          <span class="s">&quot;optional compiler flags (MSVC default is /EHsc)&quot;</span><span class="p">),</span> 
-        <span class="p">(</span><span class="s">&#39;ldflags=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
-         <span class="s">&quot;optional linker flags (posix default is --strip-all)&quot;</span><span class="p">),</span>
         <span class="p">(</span><span class="s">&#39;detection=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
          <span class="s">&quot;tamper detection - 0 disabled, 1 warn, 2 normal, 3 signed-binary &quot;</span>
          <span class="s">&quot;(default 2)&quot;</span><span class="p">),</span>
         <span class="p">(</span><span class="s">&#39;excludes=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
          <span class="s">&quot;list of dependant modules to exlcude from signet loader (comma separated)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;ldflags=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;optional linker flags (posix default is -lstdc++)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;template=&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;signet loader template (c or c++)&quot;</span><span class="p">),</span>
+
+        <span class="c"># boolean options (no parameter expected)</span>
         <span class="p">(</span><span class="s">&#39;mkresource&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
          <span class="s">&quot;dynamic generation of windows resources&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;skipdepends&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;do not scan script dependencies&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;virtualenv&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+         <span class="s">&quot;build virtualenv compatible loader&quot;</span><span class="p">),</span>
         <span class="p">])</span>
 
-    <span class="n">boolean_options</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s">&#39;mkresource&#39;</span><span class="p">])</span>
+    <span class="n">boolean_options</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s">&#39;mkresource&#39;</span><span class="p">,</span> <span class="s">&#39;skipdepends&#39;</span><span class="p">,</span> <span class="s">&#39;virtaulenv&#39;</span><span class="p">])</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dist</span><span class="p">):</span>
         <span class="sd">r&quot;&quot;&quot;initialize local variables -- BEFORE calling the</span>
@@ -448,12 +558,15 @@
 
         <span class="n">_build_ext</span><span class="o">.</span><span class="n">initialize_options</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">template</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cflags</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">detection</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">excludes</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mkresource</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skipdepends</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">template</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">virtualenv</span> <span class="o">=</span> <span class="bp">None</span>
+
 
     <span class="k">def</span> <span class="nf">finalize_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">r&quot;&quot;&quot;finished initializing option values&quot;&quot;&quot;</span>
@@ -497,7 +610,7 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">opts</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;ldflags&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="p">[]))[</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;posix&#39;</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;--strip-all&#39;</span><span class="p">,</span> <span class="s">&#39;-lstdc++&#39;</span><span class="p">,]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;-lstdc++&#39;</span><span class="p">,]</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="c"># pylint: disable=E1103</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">ldlags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ldlags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)</span>
@@ -524,6 +637,19 @@
             <span class="c"># pylint: disable=E1103</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">excludes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">excludes</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)</span>
 
+        <span class="c"># validate skipdepends</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">skipdepends</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">skipdepends</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;skipdepends&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c"># validate virtualenv</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">virtualenv</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">virtualenv</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;virtualenv&#39;</span><span class="p">,</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">virtualenv</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">excludes</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">VIRTUALENV_EXCLUDES</span><span class="p">)</span>
+
         <span class="c"># validate mkresource generation</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mkresource</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">opts</span><span class="p">:</span>
@@ -539,14 +665,25 @@
 <span class="sd">        Read from a loader template and write out c/c++ source code, making</span>
 <span class="sd">        suitable substitutions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># R0914 (too-many-locals)</span>
+        <span class="c"># pylint: disable=R0914</span>
+
+        <span class="n">includes</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">skipdepends</span><span class="p">:</span>
+            <span class="n">includes</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">py_source</span><span class="p">)[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]]</span>
 
         <span class="n">sig_decls</span> <span class="o">=</span> <span class="n">generate_sigs_decl</span><span class="p">(</span><span class="n">py_source</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> 
-                <span class="n">excludes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">excludes</span><span class="p">)</span>
+                        <span class="n">excludes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">excludes</span><span class="p">,</span> <span class="n">includes</span><span class="o">=</span><span class="n">includes</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">debug_print</span><span class="p">(</span><span class="n">sig_decls</span><span class="p">)</span>
 
         <span class="n">loader_source</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">build_lib</span><span class="p">,</span> 
                             <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">py_source</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">3</span><span class="p">])</span> <span class="o">+</span> <span class="s">&#39;.cpp&#39;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">loader_source</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fout</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fin</span><span class="p">:</span>
+                    <span class="n">fout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
 
         <span class="n">script_tag</span> <span class="o">=</span> <span class="s">&#39;const char SCRIPT[]&#39;</span>
         <span class="n">sigs_tag</span> <span class="o">=</span> <span class="s">&#39;const Signature SIGS[]&#39;</span>
@@ -554,8 +691,10 @@
 
         <span class="n">found_script</span><span class="p">,</span> <span class="n">found_sigs</span><span class="p">,</span> <span class="n">found_tamp</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span>
 
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">template</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">loader_source</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fout</span><span class="p">:</span>
+        <span class="n">loader_hdr</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">signet_root</span><span class="p">,</span> <span class="s">&#39;templates&#39;</span><span class="p">,</span> <span class="s">&#39;loader.h&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">loader_hdr</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
+            <span class="n">tgt_hdr</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">build_lib</span><span class="p">,</span> <span class="s">&#39;loader.h&#39;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">tgt_hdr</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fout</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fin</span><span class="p">:</span>
                     <span class="c"># found SCRIPT declaration ?</span>
                     <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">script_tag</span><span class="p">):</span>
@@ -576,8 +715,8 @@
                            <span class="p">(</span><span class="n">found_sigs</span><span class="p">,</span> <span class="n">sigs_tag</span><span class="p">),</span> 
                            <span class="p">(</span><span class="n">found_tamp</span><span class="p">,</span> <span class="n">tamp_tag</span><span class="p">)):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;missing declaration &#39;</span><span class="si">%s</span><span class="s">&#39; in loader&quot;</span> 
-                    <span class="o">%</span> <span class="n">tag</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;missing declaration &#39;</span><span class="si">%s</span><span class="s">&#39; in </span><span class="si">%s</span><span class="s">&quot;</span> 
+                    <span class="o">%</span> <span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">loader_hdr</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">loader_source</span>
 
@@ -668,6 +807,10 @@
 <div class="viewcode-block" id="build_signet.build_extension"><a class="viewcode-back" href="../../../signet.command.build_signet.html#signet.command.build_signet.build_signet.build_extension">[docs]</a>    <span class="k">def</span> <span class="nf">build_extension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ext</span><span class="p">):</span>
         <span class="sd">r&quot;&quot;&quot;perform the build action(s)&quot;&quot;&quot;</span>
 
+        <span class="c"># R0912 (too-many-branches)</span>
+        <span class="c"># R0914 (too-many-locals)</span>
+        <span class="c"># pylint: disable=R0912, R0914</span>
+
         <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">sources</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">sources</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span>
                 <span class="s">&quot;in &#39;ext_modules&#39; options (extension &#39;</span><span class="si">%s</span><span class="s">&#39;), &quot;</span>
@@ -737,12 +880,26 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span><span class="p">:</span>
             <span class="n">extra_args</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ldflags</span><span class="p">)</span>
 
-        <span class="c"># link</span>
+        <span class="c"># Extra link libraries</span>
+
+        <span class="n">library_dirs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">libraries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_libraries</span><span class="p">(</span><span class="n">ext</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;posix&#39;</span><span class="p">:</span>
+            <span class="n">pylib</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;python</span><span class="si">%d</span><span class="s">.</span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span>
+                     <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">hexversion</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">,</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">hexversion</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">pylib</span> <span class="o">!=</span> <span class="n">libraries</span><span class="p">:</span>
+                <span class="n">libraries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pylib</span><span class="p">)</span>
+            <span class="n">libp</span> <span class="o">=</span> <span class="n">sysconfig</span><span class="o">.</span><span class="n">get_config_var</span><span class="p">(</span><span class="s">&#39;LIBPL&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">libp</span><span class="p">:</span>
+                <span class="n">library_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">libp</span><span class="p">)</span>
+
+        <span class="c"># Link</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">compiler</span><span class="o">.</span><span class="n">link_executable</span><span class="p">(</span>
                 <span class="n">objects</span><span class="p">,</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">py_source</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span>
-                <span class="n">libraries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_libraries</span><span class="p">(</span><span class="n">ext</span><span class="p">),</span>
+                <span class="n">libraries</span> <span class="o">=</span> <span class="n">libraries</span><span class="p">,</span>
+                <span class="n">library_dirs</span> <span class="o">=</span> <span class="n">library_dirs</span><span class="p">,</span>
                 <span class="n">runtime_library_dirs</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">runtime_library_dirs</span><span class="p">,</span>
                 <span class="n">extra_postargs</span> <span class="o">=</span> <span class="n">extra_args</span><span class="p">,</span>
                 <span class="n">debug</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
@@ -780,8 +937,7 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li><a href="../../../index.html">signet  documentation</a> &raquo;</li>
-          <li><a href="../../index.html" >Module code</a> &raquo;</li>
-          <li><a href="../command.html" >signet.command</a> &raquo;</li> 
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

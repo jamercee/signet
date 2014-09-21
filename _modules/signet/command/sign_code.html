@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
     <link rel="top" title="signet  documentation" href="../../../index.html" />
-    <link rel="up" title="signet.command" href="../command.html" /> 
+    <link rel="up" title="Module code" href="../../index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -37,8 +37,7 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li><a href="../../../index.html">signet  documentation</a> &raquo;</li>
-          <li><a href="../../index.html" >Module code</a> &raquo;</li>
-          <li><a href="../command.html" accesskey="U">signet.command</a> &raquo;</li> 
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -412,6 +411,16 @@
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">exename</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="n">DistutilsSetupError</span><span class="p">(</span><span class="s">&quot;missing &#39;</span><span class="si">%s</span><span class="s">&#39; to sign&quot;</span> <span class="o">%</span> <span class="n">exename</span><span class="p">)</span>
 
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">force</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span>
+                            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">signtool</span><span class="p">,</span> <span class="s">&#39;verify&#39;</span><span class="p">,</span> <span class="s">&#39;/q&#39;</span><span class="p">,</span> <span class="s">&#39;/pa&#39;</span><span class="p">,</span> <span class="n">exename</span><span class="p">],</span>
+                            <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">)</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;skipping &#39;</span><span class="si">%s</span><span class="s">&#39; (already signed)&quot;</span><span class="p">,</span> <span class="n">exename</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
             <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;sign </span><span class="si">%s</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">exename</span><span class="p">)</span>
 
             <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
@@ -480,8 +489,7 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li><a href="../../../index.html">signet  documentation</a> &raquo;</li>
-          <li><a href="../../index.html" >Module code</a> &raquo;</li>
-          <li><a href="../command.html" >signet.command</a> &raquo;</li> 
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
