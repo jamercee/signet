@@ -512,6 +512,23 @@ int parse_options(int argc, char* argv[], const char* script) {
 		args[args_used++] = strdup(argv[i]);
 		}
 
+	const char* senv = getenv("SIGNETSECURITY");
+    if (senv) {
+        if (strcmp(senv, "OFF") == 0) {
+            TAMPER = 0;
+            }
+        else if (strcmp(senv, "WARN") == 0) {
+            TAMPER = 1;
+            }
+        else if (strcmp(senv, "MAX") == 0) {
+            TAMPER = 3;
+            }
+        else{
+            log(LOG_WARNING, "unrecognized environment SIGNETSECURITY=%s\n",
+                    senv);
+            }
+        }
+
 	PySys_SetArgv(args_used, args);
 
 	return 0;
