@@ -24,7 +24,7 @@ The built loader will be installed in the same directory as the script file.
    `disutils.command.build_ext <https://docs.python.org/2/distutils/apiref.html#module-distutils.core>`_ .
 
    **build_signet** makes available additional arguments you can specify
-   when calling `distutils.core.setup() <https://docs.python.org/2/distutils/apiref.html#distutils.core.setup>`_ 
+   when calling `distutils.core.setup() <https://docs.python.org/2/distutils/apiref.html#distutils.core.setup>`_
 
    .. tabularcolumns:: |l|L|l
 
@@ -78,7 +78,7 @@ Windows Resources
 
 In Windows, resources are read-only data embedded in exe's. These resources contain
 meta-data about your executables that users can inspect with Explorer, Task Manager
-and other administrative tools (`Read more <https://en.wikipedia.org/wiki/Resource_%28Windows%29>`_). 
+and other administrative tools (`Read more <https://en.wikipedia.org/wiki/Resource_%28Windows%29>`_).
 
 From a secuity perspective, the VESIONINFO resources are an important tool to
 verify the details of a binary.  **build_signet** will generate embedded
@@ -145,7 +145,7 @@ The virtualenv package includes replacements modules for several packages. This
 presents a potential problems for signet.  If your script imports one of these
 dependencies, the hashes calculated will likely not match the version of
 virtualenv (unless you build your loader from withn an active virtualenv
-environment). 
+environment).
 
 We've collected the module replacements from virtualenv into a predefined
 exclude list. If your *setup.py* uses the **--virtualenv** option, the loader
@@ -186,7 +186,7 @@ An example to create Windows resource file, ``hello.py``::
 
     setup(name = 'hello',
         cmdclass = {'build_signet': build_signet},
-        options = {'build_signet' : { 
+        options = {'build_signet' : {
                         'mkresources': True,
                         }
                   },
@@ -202,7 +202,7 @@ An example to exclude certain dependencies
 
     setup(name = 'hello',
         cmdclass = {'build_signet': build_signet},
-        options = {'build_signet' : { 
+        options = {'build_signet' : {
                         'excludes': ['distutils'] ,
                         }
                   },
@@ -218,7 +218,7 @@ An example to build a *virtualenv* compatible loaders
 
     setup(name = 'hello',
         cmdclass = {'build_signet': build_signet},
-        options = {'build_signet' : { 
+        options = {'build_signet' : {
                         'virtualenv': True,
                         }
                   },
@@ -263,7 +263,7 @@ __email__      = 'jim@carroll.com'
 __status__     = 'Production'
 __copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
-# Exclude these dependencies when building 
+# Exclude these dependencies when building
 # virtualenv compatible loader
 
 VIRTUALENV_EXCLUDES = [
@@ -288,7 +288,7 @@ def module_signatures(py_source, verbose=True):
     finder = modulefinder.ModuleFinder()
     finder.run_script(py_source)
 
-    # Iterate over installed modules, and try to 
+    # Iterate over installed modules, and try to
     # determine what filename they came from
 
     my_mod = os.path.basename(py_source)
@@ -304,7 +304,7 @@ def module_signatures(py_source, verbose=True):
         # If module has a custom loader (ala: egg),
         # use the name of the archive file.
 
-        fname = (getattr(mod, '__loader__', None) or 
+        fname = (getattr(mod, '__loader__', None) or
                  getattr(mod, '__file__', None))
 
         if not fname:
@@ -313,7 +313,7 @@ def module_signatures(py_source, verbose=True):
         else:
             modules[modname] = fname
 
-    # Now iterate over the list of filenames we 
+    # Now iterate over the list of filenames we
     # collected, and calculate each one's hash
 
     sha1 = hashlib.sha1
@@ -332,7 +332,7 @@ def module_signatures(py_source, verbose=True):
 
 def make_sigs_decl(sigs):
     r"""Accept list of signature tuples, and returns C declaration.
-        *sigs* is a list of 2-tuples [(sha1, mod), ...]. 
+        *sigs* is a list of 2-tuples [(sha1, mod), ...].
     """
     sigs_decl = StringIO.StringIO()
     sigs_decl.write('const Signature SIGS[] = {\n')
@@ -345,16 +345,16 @@ def make_sigs_decl(sigs):
 
 
 def generate_sigs_decl(py_source, verbose=True, excludes=None, includes=None):
-    r"""Scan *py_source*, and returns C declaration as string. 
+    r"""Scan *py_source*, and returns C declaration as string.
         If *verbose* is true, display diagnostic output. Any modules or it's
         decendants in the *excludes* list will be excluded from signatures
         declaration. If *includes* list is provided, ONLY generate declarations
-        for the modules in the list.  
-        
+        for the modules in the list.
+
         The returned string will be formatted:
 
     .. code-block:: c
-        
+
         const Signature SIGS[] = {
                 {"hexdigest1", "module1"},
                 {"hexdigest2", "module2"},
@@ -408,18 +408,18 @@ def parse_rc_version(vstring):
     while len(parts) < 4:
         parts.extend('0')
 
-    return ('%d,%d,%d,%d' % 
+    return ('%d,%d,%d,%d' %
             (int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])))
 
 
 # pylint: disable=C0301
 def extract_resource_details(py_source):
     r"""extract resource(s) from py_source
-   
+
     Each line of py_source is scanned for resource value(s) beginning in
     column 1. The expected pattern is ``__KEY__ = 'value'``, where KEY
-    is one of the valid *string-name* parameters described by 
-    `MSDN <http://msdn.microsoft.com/en-us/library/windows/desktop/aa381049%28v=vs.85%29.aspx>`_ 
+    is one of the valid *string-name* parameters described by
+    `MSDN <http://msdn.microsoft.com/en-us/library/windows/desktop/aa381049%28v=vs.85%29.aspx>`_
     (and __icon__).
     """
     # pylint: enable=C0301
@@ -427,7 +427,7 @@ def extract_resource_details(py_source):
     ico = os.path.join(os.path.dirname(__file__), 'static', 'app.ico')
 
     resources = {
-        'CompanyName': None, 
+        'CompanyName': None,
         'FileDescription': None,
         'FileVersion': '0.0.0.0',
         'LegalCopyright': None,
@@ -465,7 +465,7 @@ class build_signet(_build_ext):
 
         # options that require parameters
         ('cflags=',  None,
-         "optional compiler flags (MSVC default is /EHsc)"), 
+         "optional compiler flags (MSVC default is /EHsc)"),
         ('detection=', None,
          "tamper detection - 0 disabled, 1 warn, 2 normal, 3 signed-binary "
          "(default 2)"),
@@ -521,7 +521,7 @@ class build_signet(_build_ext):
 
     def finalize_options(self):
         r"""finished initializing option values"""
-        
+
         # R0912 (too-many-branches)
         # pylint: disable=R0912
 
@@ -534,7 +534,7 @@ class build_signet(_build_ext):
         if self.template is None and opts:
             self.template = opts.get('template', (None, None))[1]
         if self.template is None:
-            self.template = os.path.join(self.signet_root, 
+            self.template = os.path.join(self.signet_root,
                                     'templates', 'loader.cpp')
 
         if not os.path.isfile(self.template):
@@ -557,7 +557,7 @@ class build_signet(_build_ext):
             self.cflags = self.cflags.split(',')
 
         # validate ldflags
-    
+
         if not self.ldflags and opts:
             self.opts = opts.get('ldflags', (None, []))[1]
         if not self.ldflags and os.name == 'posix':
@@ -581,7 +581,7 @@ class build_signet(_build_ext):
         if self.excludes is None:
             if opts:
                 self.excludes = opts.get('excludes', (None, []))[1]
-            else: 
+            else:
                 self.excludes = []
 
         if isinstance(self.excludes, str):
@@ -623,12 +623,12 @@ class build_signet(_build_ext):
         if self.skipdepends:
             includes = [os.path.basename(py_source)[:-3]]
 
-        sig_decls = generate_sigs_decl(py_source, verbose=False, 
+        sig_decls = generate_sigs_decl(py_source, verbose=False,
                         excludes=self.excludes, includes=includes)
 
         self.debug_print(sig_decls)
 
-        loader_source = os.path.join(self.build_lib, 
+        loader_source = os.path.join(self.build_lib,
                             os.path.basename(py_source[0:-3]) + '.cpp')
 
         with open(self.template) as fin:
@@ -649,7 +649,8 @@ class build_signet(_build_ext):
                 for line in fin:
                     # found SCRIPT declaration ?
                     if line.startswith(script_tag):
-                        fout.write('%s = "%s";\n' % (script_tag, py_source))
+                        fout.write('%s = "%s";\n' % (script_tag,
+                            os.path.basename(py_source)))
                         found_script = True
                     # found SIGS declatation ?
                     elif line.startswith(sigs_tag):
@@ -662,11 +663,11 @@ class build_signet(_build_ext):
                     else:
                         fout.write(line)
 
-        for found, tag in ((found_script, script_tag), 
-                           (found_sigs, sigs_tag), 
+        for found, tag in ((found_script, script_tag),
+                           (found_sigs, sigs_tag),
                            (found_tamp, tamp_tag)):
             if not found:
-                raise DistutilsSetupError("missing declaration '%s' in %s" 
+                raise DistutilsSetupError("missing declaration '%s' in %s"
                     % (tag, loader_hdr))
 
         return loader_source
@@ -684,15 +685,15 @@ class build_signet(_build_ext):
 
         rc['CompanyName'] = (rc.get('CompanyName') or
                                 getattr(md, 'maintainer', None))
-        rc['FileDescription'] = (rc.get('FileDescription') or 
+        rc['FileDescription'] = (rc.get('FileDescription') or
                                 getattr(md, 'description', None))
-        rc['FileVersion'] = (rc.get('FileVersion') or 
+        rc['FileVersion'] = (rc.get('FileVersion') or
                                 getattr(md, 'version', None))
-        rc['LegalCopyright'] = (rc.get('LegalCopyright') or 
+        rc['LegalCopyright'] = (rc.get('LegalCopyright') or
                                 getattr(md, 'license', None))
-        rc['ProductName'] = (rc.get('ProductName') or 
+        rc['ProductName'] = (rc.get('ProductName') or
                                 getattr(md, 'name', None))
-        rc['ProductVersion'] = (rc.get('ProductVersion') or 
+        rc['ProductVersion'] = (rc.get('ProductVersion') or
                                 getattr(md, 'version', None))
 
         for key, val in rc.items():
@@ -729,7 +730,7 @@ class build_signet(_build_ext):
             fout.write('\t\tBLOCK "040904b0"\n')    # US English, Unicode
             fout.write('\t\tBEGIN\n')
             fout.write('\t\t\tVALUE "Comments", "Created by signet loader"\n')
-            fout.write('\t\t\tVALUE "CompanyName", "%s"\n' 
+            fout.write('\t\t\tVALUE "CompanyName", "%s"\n'
                     % rc['CompanyName'])
             fout.write('\t\t\tVALUE "FileDescription", "%s"\n'
                     % rc['FileDescription'])
@@ -739,7 +740,7 @@ class build_signet(_build_ext):
                     % base)
             fout.write('\t\t\tVALUE "LegalCopyright", "%s"\n'
                     % rc['LegalCopyright'])
-            fout.write('\t\t\tVALUE "OriginalFileName", "%s"\n' 
+            fout.write('\t\t\tVALUE "OriginalFileName", "%s"\n'
                     % exename)
             fout.write('\t\t\tVALUE "ProductName", "%s"\n'
                     % rc['ProductName'])
@@ -796,7 +797,7 @@ class build_signet(_build_ext):
 
         if self.mkresource:
             loader_sources.append(self.generate_rcfile(py_source, self.build_lib))
-                        
+
         # Add extra compiler args (from Extension or command line)
 
         extra_args = ext.extra_compile_args or []
