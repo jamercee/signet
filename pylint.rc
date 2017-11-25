@@ -33,7 +33,7 @@ load-plugins=
 # can either give multiple identifier separated by comma (,) or put this option
 # multiple time (only on the command line, not in the configuration file where
 # it should appear only once).
-disable=I0011, R0801, R0902, R0921, R0922, C0302, C0303, C0103, W0201, R0904
+disable=I0011, I0012, R0801, R0902, R0921, R0922, C0302, C0303, C0103, W0201, R0904, C0330, C0326
 
 [REPORTS]
 
@@ -42,7 +42,7 @@ disable=I0011, R0801, R0902, R0921, R0922, C0302, C0303, C0103, W0201, R0904
 output-format=text
 
 # Include message's id in output
-include-ids=yes
+#include-ids=yes
 
 # Put messages in a separate file for each module / package specified on the
 # command line instead of printing them on stdout. Reports (if any) will be
@@ -149,6 +149,8 @@ no-docstring-rgx=__.*__
 
 
 [TYPECHECK]
+
+extension-pkg-whitelist=win32crypt
 
 # Tells whether missing members accessed in mixin class should be ignored. A
 # mixin class is detected if its name ends with "mixin" (case insensitive).
