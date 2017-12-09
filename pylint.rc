@@ -150,7 +150,7 @@ no-docstring-rgx=__.*__
 
 [TYPECHECK]
 
-extension-pkg-whitelist=win32crypt
+extension-pkg-whitelist=win32crypt, pywincert
 
 # Tells whether missing members accessed in mixin class should be ignored. A
 # mixin class is detected if its name ends with "mixin" (case insensitive).

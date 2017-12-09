@@ -2,7 +2,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include <algorithm>
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include "loader.h"
@@ -10,14 +12,24 @@
 #include "verifytrust.h"
 
 
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
+#include <dirent.h>
+#endif
+
+using namespace std;
+
 // ---------------------------------------------------------------------------
 // MACROS 
 // ---------------------------------------------------------------------------
 
 #ifdef _MSC_VER
 #define STAT _stat
+#define SEP "\\"
 #else
 #define STAT stat
+#define SEP "/"
 #endif
 
 // ---------------------------------------------------------------------------
@@ -44,11 +56,6 @@ public:
 		}
 	};
 
-PyObject* FndFx;				/* import imp; FndFx = imp.find_module */
-PyObject* LoadFx;				/* import imp; LoadFx = imp.load_module */
-
-std::vector<PyObject*> Imports;	/* list of imported modules */
-
 // Enable debug logging during build by passing extra args, eg:
 // 		python setup.py build_signet --define LOGGING=10
 //
@@ -73,26 +80,55 @@ int Debug = LOG_WARNING;
 // FUNCTIONS
 // ---------------------------------------------------------------------------
 
+/* log python error to stderr */
+
+void python_err(const char fmt[], ...) {
+
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+
+	if (PyErr_Occurred()) {
+		PyErr_Print();
+		return;
+		}
+	fprintf(stderr, "No python error ocurred.\n");
+	}
+
+/* log formatted message if Debug >= level */
+
+void log(int level, const char fmt[], ...) {
+
+	if (level < Debug)
+		return;
+
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	}
+
 /* return the directory name of path */
 
-std::string _dirname(const char path[]) {
+string _dirname(const char path[]) {
 
-	std::string dname = path;
-	std::size_t slash = dname.find_last_of("/\\");
+	string dname = path;
+	size_t slash = dname.find_last_of("/\\");
 
-	if (slash == std::string::npos)
-		return std::string("");
+	if (slash == string::npos)
+		return string("");
 
 	return dname.substr(0, slash+1);
 	}
 
 /* return the base name of pathname path */
 
-std::string _basename(const char path[]) {
+string _basename(const char path[]) {
 
-	std::string pathname = path;
-	std::size_t slash = pathname.find_last_of("/\\");
-	if (slash != std::string::npos)
+	string pathname = path;
+	size_t slash = pathname.find_last_of("/\\");
+	if (slash != string::npos)
 		pathname = pathname.substr(slash+1);
 
 	return pathname;
@@ -120,69 +156,62 @@ int isdir(const char pathname[]) {
 	return S_ISDIR(st.st_mode) ? 1 : 0;
 	}
 
-/* log python error to stderr */
+/* return 1 if *str* ends with the string *end* (str.endswith()) */
 
-void python_err(const char fmt[], ...) {
+int endswith(const string& str, const string& end) {
+    if (end.size() > end.size())
+        return false;
+    return equal(end.rbegin(), end.rend(), str.rbegin());
+    }
 
-	va_list args;
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
+/* return the list of strings in *str* seperated by *delim* (str.split()) */
 
-	if (PyErr_Occurred()) {
-		PyErr_Print();
-		return;
-		}
-	fprintf(stderr, "No python error ocurred.\n");
-	}
+vector<string> split(const string str, const char delim) {
+    stringstream ss(str);
+    string item;
+    vector<string> tokens;
+    while(getline(ss, item, delim)) {
+        tokens.push_back(item);
+        }
+    if (tokens.size() == 0)
+        tokens.push_back(str);
+    return tokens;
+    }
 
-void log(int level, const char fmt[], ...) {
+/* return the list of files in *path* (os.listdir()) */
 
-	/* level too low? */
+vector<string> listdir(const string& path) {
+    vector<string> files;
+#ifdef _MSC_VER
+    string search(path);
+    if (!endswith(search, SEP)) {
+        search += SEP;
+        }
+    search += "*";
 
-	if (level < Debug)
-		return;
-
-	va_list args;
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
-	}
-
-/* accept python list, return printable string */
-
-std::string list_asstring(PyObject* py_list) {
-
-	/* validate the py_list */
-
-	if (py_list == Py_None)
-		return std::string("");
-	if (!PyList_Check(py_list))
-		return std::string("py_list not a list");
-	if (PyList_Size(py_list) < 1)
-		return std::string("[]");
-
-	/* iterate py_list, build response */
-
-	std::string rsp = "[";
-	for(int i = 0; i < PyList_Size(py_list); i++) {
-
-		PyObject* py_item = PyList_GetItem(py_list, i);
-		const char* item;
-		if (PyString_Check(py_item))
-			item = PyString_AsString(py_item);
-		else
-			item = "(not a string type)";
-
-		/* add item to response */
-
-		if (rsp.length() > 1)
-			rsp += ", ";
-		rsp += item;
-		}
-
-	return rsp + "]";
-	}
+    HANDLE fnd;
+    WIN32_FIND_DATA fdata;
+    if ((fnd = ::FindFirstFile(search.c_str(), &fdata)) 
+            != INVALID_HANDLE_VALUE) {
+        do {
+            files.push_back(fdata.cFileName);
+            } while(::FindNextFile(fnd, &fdata));
+        ::FindClose(fnd);
+        }
+#else
+    DIR* dirp = opendir(path.c_str());
+    if (!dirp) {
+        log(LOG_ERROR, "error opening dir %s: %d\n", path.c_str(), errno);
+        return files;
+        }
+    struct dirent* dent;
+    while((dirent = readdir(dirp)) != NULL) {
+        files.push_back(dent->d_name);
+        }
+    closedir(dirp);
+#endif
+    return files;
+    }
 
 /* Calculate sha1 file hash, return hexdigest as ascii string (lowercase) */
 
@@ -198,7 +227,7 @@ char* sha1hexdigest(const char fname[]) {
 		return NULL;
 		}
 
-	char buf[64*1024];
+	char buf[64 * 1024];
 	size_t rdsz;
 
 	while((rdsz=fread(buf, 1, sizeof(buf), fin)) > 0) {
@@ -222,169 +251,7 @@ char* sha1hexdigest(const char fname[]) {
 	return hexdigest;
 	}
 
-/* invoke imp.find_module() */
-
-int find_module(const char mod_name[], PyObject* paths, PyObject** file, 
-		PyObject** pathname, PyObject** description) {
-
-	PyPtr results( PyObject_CallFunction(FndFx, (char*)"sO", mod_name, paths) );
-	if (results.get() == NULL) {
-		if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_ImportError)) {
-			log(LOG_WARNING, "warning: could not find %s\n", mod_name);
-			}
-		else{
-			python_err("unexpected exception from imp.find_module()");
-			}
-		return -1;
-		}
-
-	if (!PyArg_ParseTuple(results.get(), "OOO", file, pathname, description)) {
-		python_err("error retrieving imp.find_module results");
-		return -1;
-		}
-
-	Py_INCREF(*file);
-	Py_INCREF(*pathname);
-	Py_INCREF(*description);
-
-	return 0;
-	}
-
-/* invoke imp.load_module() */
-
-int load_module(const char mod_name[], PyObject* py_file, PyObject* py_pathname, 
-		PyObject* py_description) {
-
-	PyPtr results( PyObject_CallFunction(LoadFx, (char*)"sOOO", mod_name,
-				py_file, py_pathname, py_description) );
-	if (results.get() == NULL) {
-		python_err("error loading module %s\n", mod_name);
-		return -1;
-		}
-
-	if (py_file != Py_None) {
-		PyObject_CallMethod(py_file, (char*)"close", NULL);
-		}
-
-	return 0;
-	}
-
-/* retrieve a module's full filename (ie: M.__file__) */
-
-int get_module_path(const char mod_name[], std::string& pathname) {
-
-	/* This module uses imp.find_module() to locate a module's pathname. Because
-	 * find_module does not handle heirarchical module names (names containing
-	 * dots), in order to find P.M, we use find_module() to locate P, and
-	 * import P, then use find_module with the path argument set to P.__path__
-	 */
-
-	PyPtr py_parent_path(Py_None);		/* last parent we encountered (as list) */
-
-	PyObject* py_file = NULL;
-	PyObject* py_pathname = NULL;
-	PyObject* py_description = NULL;
-
-	int rc = 0;
-
-	log(LOG_DEBUG, ">>> get_module_path %s\n", mod_name);
-
-	/* Iterate module heirarchy */
-
-	const char* mp, *dot;
-	for(mp = dot = mod_name; (dot = strchr(dot, '.')) != NULL; dot++) {
-
-		/* find P */
-
-		int plen = dot - mp;
-		std::string parent(mp, plen);
-
-		log(LOG_DEBUG, "\tfind M %s, P.__path__ %s\n", 
-				parent.c_str(), list_asstring(py_parent_path.get()).c_str());
-
-		if (find_module(parent.c_str(), py_parent_path.get(), &py_file, 
-					&py_pathname, &py_description)) {
-			rc = -1;
-			goto _return;
-			}
-
-		/* load_module P.M */
-
-		std::string heirarchy = std::string(mod_name, dot - mod_name);
-		log(LOG_DEBUG, "\tload_module P.M %s\n", heirarchy.c_str());
-
-		if (load_module(heirarchy.c_str(), py_file, py_pathname, 
-					py_description)) {
-			rc = -1;
-			goto _return;
-			}
-
-		/* save P.__path__ */
-
-		log(LOG_DEBUG, "\tsave P.__path__ %s\n", PyString_AsString(py_pathname));
-
-		PyObject* py_plist = PyList_New(0);
-		if (py_plist == NULL) {
-			python_err("out-of-memory in get_module_path()\n");
-			rc = -1;
-			goto _return;
-			}
-		if (PyList_Append(py_plist, py_pathname)) {
-			python_err("append to list error in get_module_path()\n");
-			Py_CLEAR(py_plist);
-			rc = -1;
-			goto _return;
-			}
-
-		/* steals the reference */
-
-		py_parent_path.chg(py_plist);
-		py_plist = NULL;
-
-		Py_CLEAR(py_file);
-		Py_CLEAR(py_description);
-
-		/* move to next module (if one exists) */
-
-		mp = dot + 1;
-		}
-
-	/* seek to last module is heirarchy */
-
-	dot = strrchr(mod_name, '.');
-	if (dot == NULL)
-		dot = mod_name;
-	else
-		dot += 1;
-
-	/* find M */
-
-	log(LOG_DEBUG, "\tlast find M %s, P.__path__ %s\n\n", 
-			dot, list_asstring(py_parent_path.get()).c_str());
-
-	if (find_module(dot, py_parent_path.get(), &py_file, &py_pathname, 
-				&py_description)) {
-		rc = -1;
-		goto _return;
-		}
-
-	pathname = PyString_AsString(py_pathname);
-
-	/* if dir, append package __init__.py */
-
-	if (isdir(pathname.c_str())) {
-		pathname += "/__init__.py";
-		}
-
-_return:
-	Py_XDECREF(py_file);
-	Py_XDECREF(py_pathname);
-	Py_XDECREF(py_description);
-
-	return rc;
-	}
-
-/* compare two sha1 hexdigests for equality */
+/* compare two sha1 hexdigests for equality, return 1 if equal */
 
 int sha1equal(const char* h1, const char* h2) {
 	for(const char* ep = h1 + 40; h1 < ep; h1++, h2++) {
@@ -394,85 +261,111 @@ int sha1equal(const char* h1, const char* h2) {
 	return 1;
 	}
 
-int validate() {
+/* Search *paths* for a sub-directory *modname* or a file *fname*, and return
+ * the match in *found_path*. Returns 1 if matched, 0 otherwise.  *found_path*
+ * will be the fully qualified path of the match */
 
-	/* we need the module name of SCRIPT (so we can skip importing) */
+int find_module(const string& modname, const string& fname, 
+        const vector<string>& paths, string& found_path) {
 
-	std::string my_mod = _basename(SCRIPT);
-	std::size_t dot = my_mod.find_last_of(".");
-	if (dot != std::string::npos)
-		my_mod = my_mod.substr(0, dot);
+	for(vector<string>::const_iterator it = paths.begin();
+			it != paths.end(); it++) {
+        if (!isdir((*it).c_str())) {
+            continue;
+            }
+        vector<string> files = listdir(*it);
 
-	/* import imp */
+        if (find(files.begin(), files.end(), modname) != files.end()) {
+            found_path = *it;
+            found_path += SEP;
+            found_path += modname;
+            return 1;
+            }
+        else if (find(files.begin(), files.end(), fname) != files.end()) {
+            found_path = *it;
+            found_path += SEP;
+            found_path += fname;
+            return 1;
+            }
+        }
+    return 0;
+    }
 
-	PyObject* imp_mod = PyImport_ImportModule("imp");
-	if (imp_mod == NULL) {
-		python_err("error importing imp");
+int find_module_path(const string& modname, const string& filename, 
+        const vector<string>& paths, string& pathname) {
+
+    vector<string> localpaths = paths;
+    vector<string> modparts = split(modname, '.');
+	for(vector<string>::iterator it = modparts.begin();
+			it != modparts.end(); it++) {
+        string found_path;
+        if (!find_module(*it, filename, localpaths, found_path))
+            return 0;
+        if (isfile(found_path.c_str()))
+            return 1;
+        // we've found a subdir matching our modpart
+        localpaths.clear();
+        localpaths.push_back(found_path);
+        }
+    return 0;
+    }
+
+/* perform validation (the heart of this code) */
+
+int validate(const string script_path) {
+
+    /* store sys.paths in vector of strings */
+
+	PyPtr sys_mod( PyImport_ImportModule("sys") );
+	if (sys_mod.get() == NULL) {
+		python_err("error importing sys");
 		return -1;
 		}
-	Imports.push_back(imp_mod);
-
-	/* FndFx = imp.find_module */
-
-	FndFx = PyObject_GetAttrString(imp_mod, "find_module");
-	if (FndFx == NULL) {
-		python_err("error linking with imp.find_module");
-		return -1;
-		}
-
-	/* LoadFx = imp.load_module */
-
-	LoadFx = PyObject_GetAttrString(imp_mod, "load_module");
-	if (FndFx == NULL) {
-		python_err("error linking with imp.load_module");
-		return -1;
-		}
-
-	/*
-	std::string ignore;
-	get_module_path("logging", ignore);
-	*/
+    PyPtr pypath( PyObject_GetAttrString(sys_mod.get(), "path") );
+    if (pypath.get() == NULL) {
+		python_err("'sys' module has no attribute 'path'");
+        return -1;
+        }
+    vector<string> paths;
+	for(Py_ssize_t i = 0; i < PyList_Size(pypath.get()); i++) {
+		PyObject* py_item = PyList_GetItem(pypath.get(), i);
+        paths.push_back(PyString_AsString(py_item));
+        }
 
 	/* iterate signatures, compare them to installed editions */
 
-	size_t max = sizeof(SIGS) / sizeof(SIGS[0]);
+    const Signature* sp = SIGS;
 
-	for(size_t i=0; i < max; i++) {
+    for(;sp->modname != NULL; sp++) {
 
-		const Signature* sp = &SIGS[i];
-
-		std::string pathname;
-		if (get_module_path(sp->mod_name, pathname))
+		string pathname;
+		if (find_module_path(sp->modname, sp->filename, paths, pathname))
 			continue;
 
-		log(LOG_INFO, ">>> Found module %s -> %s\n", sp->mod_name, pathname.c_str());
+		log(LOG_INFO, ">>> Found module %s -> %s\n", sp->modname, pathname.c_str());
 
 		const char* hexdigest = sha1hexdigest(pathname.c_str());
 		if (hexdigest != NULL && !sha1equal(hexdigest, sp->hexdigest)) {
 			log(LOG_ERROR, "SECURITY VIOLATION: '%s' has been tampered with!\n", 
 					pathname.c_str());
+            log(LOG_DEBUG, "expected %s, detected %s\n", 
+                    sp->hexdigest, hexdigest);
 			if (TAMPER >= 2)
 				return -1;
 			}
-
-		/* do not import SCRIPT */
-
-		if (strcmp(sp->mod_name, my_mod.c_str()) == 0)
-			continue;
-
-		/* import the certified module */
-
-		PyObject* py_import = PyImport_ImportModule(sp->mod_name);
-		if (py_import != NULL) {
-			Imports.push_back(py_import);
-			}
-
-		/* only log import errors if debug was select during build */
-
-		else if (Debug <= LOG_DEBUG) {
-			python_err("unable to import certified module %s\n", sp->mod_name);
-			}
 		}
+
+    /* check script */
+
+    const char* script_digest = sha1hexdigest(script_path.c_str());
+    if (script_digest != NULL && !sha1equal(script_digest, SCRIPT_HEXDIGEST)) {
+        log(LOG_ERROR, "SECURITY VIOLATION: '%s' has been tampered with!\n", 
+                script_path.c_str());
+        log(LOG_DEBUG, "expected %s, detected %s\n", 
+                SCRIPT_HEXDIGEST, script_digest);
+        if (TAMPER >= 2)
+            return -1;
+        }
 
 	return 0;
 	}
@@ -512,6 +405,8 @@ int parse_options(int argc, char* argv[], const char* script) {
 		args[args_used++] = strdup(argv[i]);
 		}
 
+    /* search environment for security override */
+
 	const char* senv = getenv("SIGNETSECURITY");
     if (senv) {
         if (strcmp(senv, "OFF") == 0) {
@@ -526,6 +421,21 @@ int parse_options(int argc, char* argv[], const char* script) {
         else{
             log(LOG_WARNING, "unrecognized environment SIGNETSECURITY=%s\n",
                     senv);
+            }
+        }
+
+    /* search environment for logging request */
+
+    const char* lenv = getenv("SIGNET_LOGLEVEL");
+    if (lenv) {
+        int level = atoi(lenv);
+        if (level < LOG_DEBUG || level > LOG_CRITICAL) {
+            log(LOG_WARNING, 
+                    "invalid environment setting SIGNET_LOGLEVEL=%s", lenv);
+            }
+        else{
+            Debug = level;
+            log(LOG_DEBUG, "SIGNET_LOGLEVEL set to %d\n", level);
             }
         }
 
@@ -548,7 +458,7 @@ void initialize_virtualenv() {
 
 	/* look for posix first, then windows */
 
-	std::string pyhome = venv;
+	string pyhome = venv;
 	pyhome += "/bin";
 
 	if (!isdir(pyhome.c_str())) {
@@ -579,48 +489,33 @@ int run_validation(int argc, char* argv[], const char* script) {
 		return -1;
 		}
 
-	int rc = 0;
+    /* retrieve fully qualified path of executable */
+
+    string exename;
+    int rc = get_executable(argv, exename);
 
 	/* tamper protection set to warn or max? */
 
-	if (TAMPER == 1 || TAMPER == 3) {
-
-		/* retrieve fully qualified path of executable */
-
-		std::string exename;
-		rc = get_executable(argv, exename);
+	if (rc == 0 && (TAMPER == 1 || TAMPER == 3)) {
 
 		/* validate binary signature */
 
-		if (rc == 0) {
-			int trusted = verify_trust(exename.c_str(), 1);
+        int trusted = verify_trust(exename.c_str(), 1);
 
-			/* if untrusted, and max protection, exit */
+        /* if untrusted, and max protection, exit */
 
-			if (trusted < 1 && TAMPER == 3)
-				rc = -1;
-			}
+        if (trusted < 1 && TAMPER == 3)
+            rc = -1;
 		}
+
 
 	/* validate module security */
 
-	if (rc == 0 && TAMPER >= 1)
-		rc = validate();
-
-	/* release references */
-
-	for(std::vector<PyObject*>::iterator it = Imports.begin();
-			it != Imports.end(); it++) {
-		if (*it != NULL)
-			Py_XDECREF(*it);
-		}
-
-	if (FndFx != NULL) {
-		Py_XDECREF(FndFx);
-		}
-	if (LoadFx != NULL) {
-		Py_XDECREF(LoadFx);
-		}
+	if (rc == 0 && TAMPER >= 1) {
+        string script_path = _dirname(exename.c_str());
+        script_path += SCRIPT;
+		rc = validate(script_path);
+        }
 
 	Py_Finalize();
 
@@ -629,11 +524,11 @@ int run_validation(int argc, char* argv[], const char* script) {
 
 int main(int argc, char* argv[]) {
 
-	std::string exename;
+	string exename;
 	if (get_executable(argv, exename)) {
 		return -1;
 		}
-	std::string script = _dirname(exename.c_str()) + SCRIPT;
+	string script = _dirname(exename.c_str()) + SCRIPT;
 
 	log(LOG_INFO, ">>> Validation step\n");
 

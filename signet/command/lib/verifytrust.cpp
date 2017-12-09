@@ -112,7 +112,7 @@ int verify_trust(const char source[], int warn_unsigned=0) {
             else{
 				/* unknown error verifying signature */
 				fprintf(stderr, "SECURITY FAILURE: trying to verify '%s' "
-						"status=0x%lx, error=0x$lx\n", source, status, err);
+						"status=0x%lx, error=0x%lx\n", source, status, err);
 				trusted = -2;
 				}
             break;
@@ -120,13 +120,15 @@ int verify_trust(const char source[], int warn_unsigned=0) {
         case TRUST_E_EXPLICIT_DISTRUST:
         case CRYPT_E_SECURITY_SETTINGS:
 			/* subject or publisher was invalidated by machine admin */
-			fprintf(stderr, "SECURITY VIOLATION: '%s' is blocked by local policy\n", source);
+			fprintf(stderr, "SECURITY VIOLATION: '%s' is blocked by local policy\n", 
+                    source);
 			trusted = 0;
             break;
 
         case TRUST_E_SUBJECT_NOT_TRUSTED:
             /* user clicked "No" when asked to install/run. */
-			fprintf(stderr, "SECURTIY VIOLATION: '%s' has untrusted signature\n", source);
+			fprintf(stderr, "SECURTIY VIOLATION: '%s' has untrusted signature\n", 
+                    source);
 			trusted = 0;
             break;
 
@@ -136,7 +138,8 @@ int verify_trust(const char source[], int warn_unsigned=0) {
 			break;
 
         default:
-			fprintf(stderr, "SECURITY FAILURE: verifying '%s' status=0x%lx\n", source, status);
+			fprintf(stderr, "SECURITY FAILURE: verifying '%s' status=0x%lx\n", 
+                    source, status);
             break;
     	}
 

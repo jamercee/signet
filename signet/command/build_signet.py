@@ -66,7 +66,7 @@ The built loader will be installed in the same directory as the script file.
    +----------------+---------------------------------------+-------------------------------+
    | *skipdepends*  | Instruct signet to not scan script    | a boolean                     |
    |                | dependencies. This is a minimum       |                               |
-   |                | securty option.                       |                               |
+   |                | security option.                      |                               |
    +----------------+---------------------------------------+-------------------------------+
    | *virtualenv*   | Build a virtualenv compatible loader. | a boolean                     |
    |                | Exclude those modules that are        |                               |
@@ -245,7 +245,6 @@ from distutils.dep_util import newer_group
 from distutils.dir_util import copy_tree
 from distutils.errors import DistutilsSetupError
 import StringIO
-import modulefinder
 import hashlib
 import os
 import re
@@ -253,15 +252,18 @@ import sys
 import sysconfig
 
 # ----------------------------------------------------------------------------
+# Project imports
+# ----------------------------------------------------------------------------
+import snakefood.find
+
+# ----------------------------------------------------------------------------
 # Module level initializations
 # ----------------------------------------------------------------------------
-__pychecker__  = 'unusednames=__maintainer__,__status__'
-__version__    = '1.0.2'
-__author__     = 'Jim Carroll'
-__maintainer__ = 'Jim Carroll'
-__email__      = 'jim@carroll.com'
-__status__     = 'Production'
-__copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
+__version__ = '2.5.1'
+__author__ = 'Jim Carroll'
+__email__ = 'jim@carroll.com'
+__status__ = 'Production'
+__copyright__ = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 # Exclude these dependencies when building
 # virtualenv compatible loader
@@ -272,6 +274,37 @@ VIRTUALENV_EXCLUDES = [
         'site',
         ]
 
+
+def find_module(modname, paths):
+    r"""Search *paths* for a sub-directory or a file *modname*, returns the
+    fully qualified path of any match, or None. For a filename match, we try
+    the extensions in order or preference: *.py, *.pyc, *.pyo, *.pyd"""
+    for pth in paths:
+        if not os.path.isdir(pth):
+            continue
+        fnames = os.listdir(pth)
+        if modname in fnames:   # dir?
+            return os.path.join(pth, modname)
+        for ext in ('.py', '.pyc', '.pyo', '.pyd'):
+            if modname + ext in fnames:
+                return os.path.join(pth, modname + ext)
+    return None
+
+
+def find_module_path(modname):
+    r"""Search for *modname* in sys.path, and return the pathname of match or
+    None"""
+    paths = sys.path
+    for modpart in modname.split('.'):
+        modpath = find_module(modpart, paths)
+        if not modpath:
+            return None
+        if os.path.isfile(modpath):
+            return modpath
+        paths = [modpath]
+    return None
+
+
 def module_signatures(py_source, verbose=True):
     r"""Scan *py_source* for dependencies, and return list of
         2-tuples [(hexdigest, modulename), ...], sorted by modulename.
@@ -279,56 +312,28 @@ def module_signatures(py_source, verbose=True):
         To see what signatures signet will use when building your loader::
 
             from signet.command.build_signet import module_signatures
-            for hash, mod in module_signatures('hello.py'):
-                print hash, mod
+            for hash, mod, filename in module_signatures('hello.py'):
+                print hash, mod, filename
     """
+    modules = {}
+    ast, _ = snakefood.find.parse_python_source(py_source)
+    for res in snakefood.find.get_ast_imports(ast):
+        path = find_module_path(res[0])
+        if not path and verbose:
+            log.warn('cannot find module %s' % res[0])
+            continue
+        if path not in modules:
+            modules[path] = res[0]
 
     signatures = []
-
-    finder = modulefinder.ModuleFinder()
-    finder.run_script(py_source)
-
-    # Iterate over installed modules, and try to
-    # determine what filename they came from
-
-    my_mod = os.path.basename(py_source)
-    my_mod = os.path.splitext(my_mod)[0]
-
-    modules = { my_mod: py_source }
-
-    for modname, mod in finder.modules.items():
-
-        if modname == '__main__':
-            continue
-
-        # If module has a custom loader (ala: egg),
-        # use the name of the archive file.
-
-        fname = (getattr(mod, '__loader__', None) or
-                 getattr(mod, '__file__', None))
-
-        if not fname:
-            if verbose:
-                log.warn("can't find module '%s'", modname)
-        else:
-            modules[modname] = fname
-
-    # Now iterate over the list of filenames we
-    # collected, and calculate each one's hash
-
     sha1 = hashlib.sha1
-
-    for modname in sorted(modules.keys()):
-
-        modpath = modules[modname]
-        if modpath.endswith('.pyc'):
-            modpath = modpath[:-1]
-
+    for modpath in sorted(modules.keys()):
         with open(modpath, 'rb') as fin:
             digest = sha1(fin.read()).hexdigest()
-            signatures.append( [digest, modname] )
-
+            signatures.append(
+                [digest, modules[modpath], os.path.basename(modpath)])
     return sorted(signatures, key=lambda s: s[1])
+
 
 def make_sigs_decl(sigs):
     r"""Accept list of signature tuples, and returns C declaration.
@@ -337,8 +342,9 @@ def make_sigs_decl(sigs):
     sigs_decl = StringIO.StringIO()
     sigs_decl.write('const Signature SIGS[] = {\n')
 
-    for sha1, mod in sigs:
-        sigs_decl.write('\t{"%s", "%s"},\n' % (sha1, mod))
+    for sha1, mod, fname in sigs:
+        sigs_decl.write('\t{"%s", "%s", "%s"},\n' % (sha1, mod, fname))
+    sigs_decl.write('\t{NULL, NULL, NULL}\n')
     sigs_decl.write('\t};\n')
 
     return sigs_decl.getvalue()
@@ -356,15 +362,15 @@ def generate_sigs_decl(py_source, verbose=True, excludes=None, includes=None):
     .. code-block:: c
 
         const Signature SIGS[] = {
-                {"hexdigest1", "module1"},
-                {"hexdigest2", "module2"},
+                {"hexdigest1", "module1", "filename1"},
+                {"hexdigest2", "module2", "filename2"},
                 };
     """
 
     excludes = excludes or []
     includes = includes or []
     sigs = []
-    for sha1, mod in module_signatures(py_source, verbose):
+    for sha1, mod, fname in module_signatures(py_source, verbose):
 
         # See if module is in excludes list
 
@@ -381,9 +387,10 @@ def generate_sigs_decl(py_source, verbose=True, excludes=None, includes=None):
         # OR the module is in the includes list
 
         if not includes or mod in includes:
-            sigs.append([sha1, mod])
+            sigs.append([sha1, mod, fname])
 
     return make_sigs_decl(sigs)
+
 
 def parse_rc_version(vstring):
     r"""convert version -> rc version
@@ -438,7 +445,7 @@ def extract_resource_details(py_source):
 
     with open(py_source) as fin:
         for line in fin:
-            for key in resources.keys():
+            for key in resources:
                 ma = re.match(r'(?i)__%s__\s*=\s*(\'|")(.+)\1' % key, line)
                 if ma:
                     resources[key] = ma.group(2)
@@ -620,11 +627,11 @@ class build_signet(_build_ext):
         # pylint: disable=R0914
 
         includes = None
-        if self.skipdepends:
-            includes = [os.path.basename(py_source)[:-3]]
 
-        sig_decls = generate_sigs_decl(py_source, verbose=False,
-                        excludes=self.excludes, includes=includes)
+        sig_decls = []
+        if not self.skipdepends:
+            sig_decls = generate_sigs_decl(py_source, verbose=False,
+                            excludes=self.excludes, includes=includes)
 
         self.debug_print(sig_decls)
 
@@ -636,11 +643,17 @@ class build_signet(_build_ext):
                 for line in fin:
                     fout.write(line)
 
+        script_digest = None
+        with open(py_source, 'rb') as fin:
+            script_digest = hashlib.sha1(fin.read()).hexdigest()
+
         script_tag = 'const char SCRIPT[]'
+        digest_tag = 'const char SCRIPT_HEXDIGEST[]'
         sigs_tag = 'const Signature SIGS[]'
         tamp_tag = 'int TAMPER'
 
-        found_script, found_sigs, found_tamp = False, False, False
+        found_script, found_digest, found_sigs, found_tamp = (False, False,
+                False, False)
 
         loader_hdr = os.path.join(self.signet_root, 'templates', 'loader.h')
         with open(loader_hdr) as fin:
@@ -652,9 +665,16 @@ class build_signet(_build_ext):
                         fout.write('%s = "%s";\n' % (script_tag,
                             os.path.basename(py_source)))
                         found_script = True
+                    # found SCRIPT_HEXDIGEST declaration ?
+                    elif line.startswith(digest_tag):
+                        fout.write('%s = "%s";\n' % (digest_tag, script_digest))
+                        found_digest = True
                     # found SIGS declatation ?
                     elif line.startswith(sigs_tag):
-                        fout.write(sig_decls)
+                        if sig_decls:
+                            fout.write(sig_decls)
+                        else:
+                            fout.write(line)
                         found_sigs = True
                     # found tamper protection decl?
                     elif line.startswith(tamp_tag):
@@ -664,6 +684,7 @@ class build_signet(_build_ext):
                         fout.write(line)
 
         for found, tag in ((found_script, script_tag),
+                           (found_digest, digest_tag),
                            (found_sigs, sigs_tag),
                            (found_tamp, tamp_tag)):
             if not found:
@@ -855,4 +876,3 @@ class build_signet(_build_ext):
                 runtime_library_dirs = ext.runtime_library_dirs,
                 extra_postargs = extra_args,
                 debug = self.debug)
-

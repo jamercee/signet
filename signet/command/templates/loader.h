@@ -1,14 +1,16 @@
 
 struct Signature {				/* module signatures */
 	const char* hexdigest;
-	const char* mod_name;
+	const char* modname;
+    const char* filename;
 	};
 
 // ---------------------------------------------------------------------------
 // REPLACED GLOBALS (replaced by signet.command.build_signet)
 //
 // SCRIPT	- will be replaced with the script name we are loading.
-// SIGS   	- module signatures {{"hexdigest","module-name"},...}
+// SCRIPT_HEXDIGEST - will be replaced with SHA1 of script
+// SIGS   	- module signatures {{"hexdigest","modulename","filename"},...}
 // TAMPER 	- controls how tampering is handled
 //	3  - maximum, SCRIPT & dependency check + require signed binary
 //		 (windows only)
@@ -18,7 +20,8 @@ struct Signature {				/* module signatures */
 // ---------------------------------------------------------------------------
 
 const char SCRIPT[] = "";
-const Signature SIGS[] = {{NULL,NULL}};
+const char SCRIPT_HEXDIGEST[] = "";
+const Signature SIGS[] = {{NULL,NULL,NULL}};
 int TAMPER = 2;
 
 
