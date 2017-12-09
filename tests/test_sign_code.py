@@ -1,10 +1,13 @@
 #!/usr/bin/env python2.7
-## \file tests/build_ext.py
-# \brief signet.command.sign_code unittests
-# \date July 16th, 2014
-# \copyright Copyright(c), 2014, Carroll-Net, Inc.
-# \copyright All Rights Reserved.
-r"""unittests for signet.command.sign_code
+# pylint: disable=C0301
+r""":mod:`test_sign_code` - Windows unittests for sign_code
+===========================================================
+
+.. module:: signet.tests.test_sign_code
+   :synopsis: Windows unittests for signet.command.sign_code
+.. moduleauthor:: Jim Carroll <jim@carroll.com>
+
+These tests are for Windows only.
 
 Copyright(c), 2014, Carroll-Net, Inc.
 All Rights Reserved"""
@@ -30,18 +33,16 @@ import pkg_resources
 # project imports
 # ----------------------------------------------------------------------------
 from tests.utils import run_setup
-from tests.winutils import make_ca, make_pfx, remove_ca
+from pywincert import make_ca, make_pfx, remove_ca
 
 # ----------------------------------------------------------------------------
 # Module level initializations
 # ----------------------------------------------------------------------------
-__pychecker__  = 'unusednames=__maintainer__,__status__'
-__version__    = '2.4.1'
-__author__     = 'Jim Carroll'
-__maintainer__ = 'Jim Carroll'
-__email__      = 'jim@carroll.com'
-__status__     = 'Testing'
-__copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
+__version__ = '2.4.2'
+__author__ = 'Jim Carroll'
+__email__ = 'jim@carroll.com'
+__status__ = 'Testing'
+__copyright__ = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 class TestSignCode(unittest.TestCase):
     r"""test the signet.command.build_signet class"""
@@ -56,12 +57,12 @@ class TestSignCode(unittest.TestCase):
         cls.password = "abc123"
         cls.ca_pvk = os.path.join(cls.cls_tmpd, "ca.pvk")
         cls.ca_cer = os.path.join(cls.cls_tmpd, "ca.cer")
-        make_ca(cls.password, cls.ca_pvk, cls.ca_cer)
+        make_ca('TESTCA', cls.password, cls.ca_pvk, cls.ca_cer)
 
         # Create code-signing (SPC) Certificate
 
         cls.pfx = os.path.join(cls.cls_tmpd, "my.pfx")
-        make_pfx(cls.password, cls.ca_cer, cls.ca_pvk, cls.pfx)
+        make_pfx('TESTCA', cls.password, cls.ca_pvk, cls.ca_cer, cls.pfx)
 
         # Must wait until next minute before cert is valid,
         # if you remove this -- certutil will fail -1
@@ -73,7 +74,7 @@ class TestSignCode(unittest.TestCase):
     def tearDownClass(cls):
         r"""destroy class fixture"""
         shutil.rmtree(cls.cls_tmpd, ignore_errors=True)
-        remove_ca()
+        remove_ca('TESTCA')
 
     def setUp(self):
         r"""initialize test fixture"""
@@ -120,9 +121,9 @@ class TestSignCode(unittest.TestCase):
                 "    ext_modules = [Extension('hello', \n"
                 "                      sources=['hello.py'])],\n"
                 ")\n" % (self.password, '\\\\'.join(self.pfx.split('\\'))))
-        
+
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         # Confirm *.exe exists
@@ -132,14 +133,14 @@ class TestSignCode(unittest.TestCase):
         # Sign *.exe
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'sign_code')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         # Run *.exe, validate output
 
         exe = os.path.join(self.tmpd, 'hello.exe')
         self.assertEqual(
-            subprocess.check_output([exe], universal_newlines=True), 
+            subprocess.check_output([exe], universal_newlines=True),
             "Hello world\n")
 
     @unittest.skipUnless(os.name == 'nt', 'requires windows')
@@ -171,24 +172,24 @@ class TestSignCode(unittest.TestCase):
                 "    ext_modules = [Extension('hello', \n"
                 "                      sources=['hello.py'])],\n"
                 ")\n" % (self.password, '\\\\'.join(self.pfx.split('\\'))))
-       
+
         # Build *.exe
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
         self.assertIn('hello.exe', os.listdir(self.tmpd))
 
         # Sign code
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'sign_code')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         exe = os.path.join(self.tmpd, 'hello.exe')
 
         # TAMPER with binary
-        
+
         with open(exe, 'r+b') as fout:
             mm = mmap.mmap(fout.fileno(), 0)
             off = mm.find('hello.py')
@@ -198,11 +199,10 @@ class TestSignCode(unittest.TestCase):
 
         # Run *.exe, confirm security violation
 
-        task = subprocess.Popen([exe], stdout=subprocess.PIPE, 
+        task = subprocess.Popen([exe], stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
                             universal_newlines=True)
         _, stderr = task.communicate()
         self.assertRegexpMatches(stderr,
                 'SECURITY VIOLATION: .+ tampered binary')
         self.assertEqual(task.returncode, -1)
-

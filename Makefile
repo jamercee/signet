@@ -37,7 +37,7 @@ PYARCH := $(shell $(PYTHON) -c "import platform; print platform.architecture()[0
 # ----------------------------------------------------------------------------
 %.pyc:	%.py
 	@echo Check $<
-	@$(PYLINT) -rn --rcfile pylint.rc $<
+	@$(PYLINT) -rn -sn --rcfile pylint.rc $<
 	@$(PYTHON) -c 'import py_compile; py_compile.compile("$<")'
 
 # ----------------------------------------------------------------------------
@@ -65,6 +65,10 @@ ifeq ($(OSTYPE), Windows)
 else
 	@$(PYTHON) setup.py nosetests -s --exclude=test_sign_code
 endif
+
+testx: comp
+	#@$(PYTHON) setup.py nosetests -s --tests tests.test_build_ext:TestBuildSignet.test_skipdepends
+	@$(PYTHON) setup.py nosetests -s --tests tests.test_build_ext
 
 build: comp
 	@$(PYTHON) setup.py build

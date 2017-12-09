@@ -1,13 +1,15 @@
 #!/usr/bin/env python2.7
-## \file tests/build_ext.py
-# \brief signet.command.build_signet unittests
-# \date July 7th, 2014
-# \copyright Copyright(c), 2014, Carroll-Net, Inc.
-# \copyright All Rights Reserved.
-r"""unittests for signet.command.build_signet
+# pylint: disable=C0301
+r""":mod:`test_build_ext` - unittests for build_signet
+======================================================
+
+.. module:: signet.tests.test_build_ext
+   :synopsis: unittests for signet.command.build_signet
+.. moduleauthor:: Jim Carroll <jim@carroll.com>
 
 Copyright(c), 2014, Carroll-Net, Inc.
 All Rights Reserved"""
+# pylint: enable=C0301
 
 # ----------------------------------------------------------------------------
 # Standard library imports
@@ -27,13 +29,11 @@ import pkg_resources
 # ----------------------------------------------------------------------------
 # Module level initializations
 # ----------------------------------------------------------------------------
-__pychecker__  = 'unusednames=__maintainer__,__status__'
-__version__    = '2.4.2'
-__author__     = 'Jim Carroll'
-__maintainer__ = 'Jim Carroll'
-__email__      = 'jim@carroll.com'
-__status__     = 'Testing'
-__copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
+__version__ = '2.4.2'
+__author__ = 'Jim Carroll'
+__email__ = 'jim@carroll.com'
+__status__ = 'Testing'
+__copyright__ = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 # W0212 Disable Access to a protected member
 # R0904 Disable Too many public methods
@@ -115,9 +115,9 @@ class TestBuildSignet(unittest.TestCase):
                 "                      sources=['hello.py'])],\n"
                 ")\n"
                 )
-        
+
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         if os.name == 'nt':
@@ -131,7 +131,7 @@ class TestBuildSignet(unittest.TestCase):
 
         exe = os.path.join(self.tmpd, exe)
         self.assertEqual(
-            subprocess.check_output([exe], universal_newlines=True), 
+            subprocess.check_output([exe], universal_newlines=True),
             "Hello world\n")
 
     def test_tampering_function(self):
@@ -156,7 +156,7 @@ class TestBuildSignet(unittest.TestCase):
                 )
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         # tamper with the SCRIPT
@@ -173,7 +173,7 @@ class TestBuildSignet(unittest.TestCase):
 
         # Confirm tamper detection
 
-        task = subprocess.Popen([os.path.join(self.tmpd, exe)], 
+        task = subprocess.Popen([os.path.join(self.tmpd, exe)],
                 universal_newlines=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (_, stderr) = task.communicate()
@@ -211,9 +211,9 @@ class TestBuildSignet(unittest.TestCase):
                 "   }\n"
                 )
 
-        (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet', 
+        (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet',
                                 ['--template', loader_c])
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         # Run the signet loader, validate output
@@ -225,7 +225,7 @@ class TestBuildSignet(unittest.TestCase):
         exe = os.path.join(self.tmpd, exe)
 
         self.assertEqual(
-            subprocess.check_output([exe], universal_newlines=True), 
+            subprocess.check_output([exe], universal_newlines=True),
             "CUSTOM\n")
 
     def test_excludes(self):
@@ -253,9 +253,9 @@ class TestBuildSignet(unittest.TestCase):
                 "                      sources=['hello.py'])],\n"
                 ")\n"
                 )
-        
+
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         # modify world.py
@@ -274,7 +274,7 @@ class TestBuildSignet(unittest.TestCase):
 
         exe = os.path.join(self.tmpd, exe)
         self.assertEqual(
-            subprocess.check_output([exe], universal_newlines=True), 
+            subprocess.check_output([exe], universal_newlines=True),
             "hello world\n")
 
     def test_skipdepends(self):
@@ -302,9 +302,9 @@ class TestBuildSignet(unittest.TestCase):
                 "                      sources=['hello.py'])],\n"
                 ")\n"
                 )
-        
+
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         # modify world.py
@@ -323,7 +323,7 @@ class TestBuildSignet(unittest.TestCase):
 
         exe = os.path.join(self.tmpd, exe)
         self.assertEqual(
-            subprocess.check_output([exe], universal_newlines=True), 
+            subprocess.check_output([exe], universal_newlines=True),
             "hello world\n")
 
     def test_detection_levels(self):
@@ -348,7 +348,7 @@ class TestBuildSignet(unittest.TestCase):
                 )
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet')
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
         # tamper with the SCRIPT
@@ -365,12 +365,12 @@ class TestBuildSignet(unittest.TestCase):
 
         # Confirm signed detection
 
-        task = subprocess.Popen([os.path.join(self.tmpd, exe), '--SECURITYMAX'], 
-                universal_newlines=True, 
+        task = subprocess.Popen([os.path.join(self.tmpd, exe), '--SECURITYMAX'],
+                universal_newlines=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (_, stderr) = task.communicate()
         self.assertNotEqual(task.returncode, 0, "signed detection failed")
-        self.assertTrue(stderr and 
+        self.assertTrue(stderr and
                 'SECURITY MAXIMUM Enabled' in stderr and
                 'SECURITY WARNING:' in stderr,
                 "unrecognized tampered output %s" % stderr)
@@ -378,12 +378,12 @@ class TestBuildSignet(unittest.TestCase):
         # Confirm warn only
 
         task = subprocess.Popen(
-                [os.path.join(self.tmpd, exe), '--SECURITYWARN'], 
-                universal_newlines=True, 
+                [os.path.join(self.tmpd, exe), '--SECURITYWARN'],
+                universal_newlines=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (_, stderr) = task.communicate()
         self.assertEqual(task.returncode, 0, "warn only failed")
-        self.assertTrue(stderr and 
+        self.assertTrue(stderr and
                 'SECURITY DISABLED' in stderr and
                 'SECURITY WARNING:' in stderr and
                 'SECURITY VIOLATION:' in stderr,
@@ -391,8 +391,8 @@ class TestBuildSignet(unittest.TestCase):
 
         # Confirm disabled security
 
-        task = subprocess.Popen([os.path.join(self.tmpd, exe), '--SECURITYOFF'], 
-                universal_newlines=True, 
+        task = subprocess.Popen([os.path.join(self.tmpd, exe), '--SECURITYOFF'],
+                universal_newlines=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (_, stderr) = task.communicate()
         self.assertEqual(task.returncode, 0, "warn only failed")
@@ -429,7 +429,7 @@ class TestBuildSignet(unittest.TestCase):
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet',
                                     ['--mkresource'])
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)
 
     @unittest.skipUnless(os.name == 'nt', 'requires windows')
@@ -460,5 +460,5 @@ class TestBuildSignet(unittest.TestCase):
 
         (rc, stdout, stderr) = run_setup(self.tmpd, 'build_signet',
                                     ['--mkresource'])
-        if rc or len(stderr):
+        if rc or stderr:
             self.fail(stdout + "\n" + stderr)

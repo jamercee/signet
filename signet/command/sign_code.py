@@ -8,7 +8,7 @@ r""":mod:`sign_code` - Digially sign code
 .. moduleauthor:: Jim Carroll <jim@carroll.com>
 
 The :mod:`signet.command.sign_code` module is responsible for digitally
-signing code. The module acts as a wrapper for the Windows SDK tool 
+signing code. The module acts as a wrapper for the Windows SDK tool
 `signtool <http://msdn.microsoft.com/en-us/library/8s9b9yaz%28v=vs.110%29.aspx>`_.
 It is intended to be a companion to :mod:`signet.command.build_signet`, but can
 be used standalone to sign any executable code file.
@@ -23,12 +23,12 @@ servers, trying each up to 5 times before giving up.
    .. py:method:: sign_code.run()
 
    This is the main function responsible for digitally signing your code. It
-   is not expected to be invoked directly, but installs itself into the 
+   is not expected to be invoked directly, but installs itself into the
    distutils.command heirarcy by nature of it's inheritance from
    `disutils.command.config <https://docs.python.org/2/distutils/apiref.html#module-distutils.core>`_ .
 
    **sign_code** makes available additional arguments you can specify
-   when calling `distutils.core.setup() <https://docs.python.org/2/distutils/apiref.html#distutils.core.setup>`_ 
+   when calling `distutils.core.setup() <https://docs.python.org/2/distutils/apiref.html#distutils.core.setup>`_
 
    .. tabularcolumns:: |l|L|l
 
@@ -102,13 +102,12 @@ Utility Functions
 """
 # pylint: enable=C0301
 
-
 # ----------------------------------------------------------------------------
 # Standard library imports
 # ----------------------------------------------------------------------------
 import base64
 from distutils import log
-from distutils.errors import (DistutilsModuleError, DistutilsPlatformError, 
+from distutils.errors import (DistutilsModuleError, DistutilsPlatformError,
         DistutilsSetupError)
 from distutils.command.config import config
 import getpass
@@ -116,6 +115,15 @@ import os
 import random
 import subprocess
 import _winreg
+
+# ----------------------------------------------------------------------------
+# Module level initializations
+# ----------------------------------------------------------------------------
+__version__ = '2.5.1'
+__author__ = 'Jim Carroll'
+__email__ = 'jim@carroll.com'
+__status__ = 'Production'
+__copyright__ = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 WINSDK_ERROR = ("Windows SDK may not be installed on this machine. "
                 "You can read more and (re-)download from "
@@ -127,20 +135,20 @@ def get_winsdk_path():
     key = None
 
     try:
-        with _winreg.OpenKeyEx(_winreg.HKEY_LOCAL_MACHINE, 
+        with _winreg.OpenKeyEx(_winreg.HKEY_LOCAL_MACHINE,
                 "SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows") as key:
             pth = _winreg.QueryValueEx(key, 'CurrentInstallFolder')[0]
             pp = []
             for part in pth.split('\\'):
-                if len(part):
+                if part:
                     pp.append(part)
             return '\\'.join(pp)
     except (WindowsError, IndexError):
-        raise DistutilsPlatformError('missing windows sdk registry entry: %s' 
+        raise DistutilsPlatformError('missing windows sdk registry entry: %s'
                 % WINSDK_ERROR)
 
 def get_saved_password(name):
-    r"""Retrieve previously saved password. The password is returned 
+    r"""Retrieve previously saved password. The password is returned
         unencrypted.  *name* is used to lookup a password on this machine,
         which must be the same *name* used in :py:func:`.save_password`."""
 
@@ -164,7 +172,7 @@ def get_saved_password(name):
 
             # decrypt password using DPAPI (CRYPTPROECT_LOCAL_MACHINE)
 
-            return win32crypt.CryptUnprotectData(enc, 
+            return win32crypt.CryptUnprotectData(enc,
                             None, None, None, 4)[1]
 
     except (WindowsError, IndexError):
@@ -177,7 +185,7 @@ def save_password(name, password):
         with Windows's registry naming rules. *password* is the plain text
         password associated with *name*. Set *password* to None, to delete
         value from the registry.
-    
+
         **TIP** I recommend you use the certificate expiration date as the name.
         Remebering when a cert will expire is a maintenance headache, and using
         this as the name will help with this chore.
@@ -213,7 +221,7 @@ def save_password(name, password):
 
     # create any missing subkeys
 
-    key = _winreg.CreateKey(_winreg.HKEY_CURRENT_USER, 
+    key = _winreg.CreateKey(_winreg.HKEY_CURRENT_USER,
                 "SOFTWARE\\signet")
 
     # save password
@@ -227,7 +235,7 @@ class sign_code(config):
     user_options = config.user_options
 
     timestamp_urls = (
-        'http://timestamp.comodoca.com/authenticode', 
+        'http://timestamp.comodoca.com/authenticode',
         'http://timestamp.verisign.com/scripts/timstamp.dll',
         'http://timestamp.globalsign.com/scripts/timestamp.dll',
         'http://tsa.starfieldtech.com')
@@ -245,7 +253,7 @@ class sign_code(config):
          "prompt & store password using DPAPI"),
         ('resetpassword', None,
          "change the stored password"),
-        ]) 
+        ])
 
     boolean_options = ['savedpassword', 'resetpassword']
 
@@ -290,7 +298,7 @@ class sign_code(config):
             raise DistutilsSetupError("sign_code requires 'pfx-file=' setting")
 
         if not os.path.isfile(self.pfx_file):
-            raise DistutilsSetupError("missing the the pfx file '%s'" 
+            raise DistutilsSetupError("missing the the pfx file '%s'"
                     % self.pfx_file)
 
         # validate winsdk_path
@@ -305,14 +313,14 @@ class sign_code(config):
 
         self.signtool = os.path.join(self.winsdk_path, 'Bin', 'signtool.exe')
         if not os.path.isfile(self.signtool):
-            raise DistutilsPlatformError('missing signtool.exe: %s' 
+            raise DistutilsPlatformError('missing signtool.exe: %s'
                     % WINSDK_ERROR)
 
         # validate digest (leave it none if not specified)
 
         if self.digest is None and opts:
             self.digest = opts.get('digest', (None, None))[1]
-      
+
         # validate password & savedpassword (must specify one)
 
         if self.password is None and opts:
@@ -380,7 +388,7 @@ class sign_code(config):
                 if timestamp_url is None:
                     raise DistutilsSetupError("exhausted timestamp servers")
 
-                cmd = [self.signtool, 'sign', 
+                cmd = [self.signtool, 'sign',
                             '/f', self.pfx_file,
                             '/p', self.password,
                             '/t', timestamp_url,
@@ -394,7 +402,7 @@ class sign_code(config):
                             stdout = subprocess.PIPE, stderr = subprocess.PIPE)
                 (stdout, stderr) = task.communicate()
                 if task.returncode == 2:
-                    log.debug('failed to sign w/ timestamp url %s', 
+                    log.debug('failed to sign w/ timestamp url %s',
                             timestamp_url)
                     continue
 
@@ -406,4 +414,3 @@ class sign_code(config):
 
                 log.debug(stdout)
                 break
-

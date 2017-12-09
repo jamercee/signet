@@ -1,17 +1,11 @@
-#!/usr/bin/env python2.7
-## \file setup.py
-# \brief Signet distutils setup.py
-# \date July 8th, 2014
-# \copyright Copyright(c), 2014, Carroll-Net, Inc.
-# \copyright All Rights Reserved.
+#!/usr/bin/env python
+# vim: set fileencoding=utf-8
 r"""Signet distutils setup.py
-
-Copyright(c), 2014, Carroll-Net, Inc.
-All Rights Reserved"""
-
+Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved"""
 # ----------------------------------------------------------------------------
 # Standard library imports
 # ----------------------------------------------------------------------------
+import os
 from setuptools import setup
 
 try:
@@ -29,16 +23,13 @@ import signet
 # ----------------------------------------------------------------------------
 # Module level initializations
 # ----------------------------------------------------------------------------
-__pychecker__  = 'unusednames=__maintainer__,__status__'
-__version__    = '2.4.1'
-__author__     = 'Jim Carroll'
-__maintainer__ = 'Jim Carroll'
-__email__      = 'jim@carroll.com'
-__status__     = 'Distribution'
+__version__ = '2.5.1'
+__author__ = 'Jim Carroll'
+__email__ = 'jim@carroll.com'
+__status__ = 'Distribution'
 __copyright__  = 'Copyright(c) 2014, Carroll-Net, Inc., All Rights Reserved'
 
 long_description = []
-
 try:
     with open('docs/index.rst') as fin:
         for line in fin:
@@ -48,9 +39,13 @@ try:
 except IOError:
     pass
 
-setup(
-    # project meta-data
+setup_requires  = ['nose>=1.0']
+install_requires = ['snakefood']
+if os.name == 'nt':
+    setup_requires.append('pywincert')
+    install_requires.append('pywincert')
 
+setup(
     name = 'signet',
     version = signet.__version__,
     description = ('Signet provides support for building and '
@@ -77,15 +72,14 @@ setup(
     # project details
 
     packages = ['signet', 'signet.command'],
-    package_data = {'signet': ['command/templates/*', 
+    package_data = {'signet': ['command/templates/*',
                                'command/lib/*',
                                'command/static/*',
                                ]},
 
     # testing (assumes you have nose installed)
 
-    test_suite      = 'nose.collector',
-    setup_requires  = ['nose>=1.0'],
-
+    test_suite = 'nose.collector',
+    setup_requires = setup_requires,
+    install_requires = install_requires,
     )
-     
